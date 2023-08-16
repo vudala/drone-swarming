@@ -26,7 +26,7 @@ async def drone_init(instance: int):
     return drone
 
 
-async def refresh_position(drone: Drone, interval: float):
+async def position_refresher(drone: Drone, interval: float):
     """
     Keeps updating and publishing the drone position
 
@@ -68,7 +68,7 @@ def subscribe_to_topics(drone: Drone, instance: int, total_instances: int):
 
 # execute all the refreshing coroutines
 async def refresher(drone: Drone):
-    position_ref_coro = refresh_position(drone, 0.5)
+    position_ref_coro = position_refresher(drone, 0.5)
 
     group = asyncio.gather(
         position_ref_coro
