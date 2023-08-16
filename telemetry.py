@@ -1,20 +1,15 @@
 #!/usr/bin/env python3
 
 import sys
-import pickle
 import threading
 
 import asyncio
 
-from drone import Drone
-
 import rclpy
-
 from std_msgs.msg import ByteMultiArray
 
-import mission
-
 import utils
+from drone import Drone
 
 
 async def drone_init(instance: int):
@@ -32,11 +27,11 @@ async def drone_init(instance: int):
 
 
 # keeps updating and publishing its own position
-async def refresh_position(drone: Drone):
+async def refresh_position(drone: Drone, interval: float):
     while True:
         await drone.update_position()
         drone.publish_position()
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(interval)
 
 
 # callback function of the position subscription
@@ -57,18 +52,15 @@ def subscribe_to_drones_positions(drone: Drone, instance: int, total_instances: 
             )
 
 
-async def run():
-    # process args
-    instance = int(sys.argv[1])
-    target_altitude = float(sys.argv[2])
-    total_instances = int(sys.argv[3])
-
-    # init
+async def run(instance: int, total_instances: int):
+    # - - - - I N I T - - - -
     drone = await drone_init(instance)
 
     # manual semaphore, gonna change that later
-    input('Press any button to continue')
+    input('All set, press any button to continue')
 
+    # - - - - S U B S C R I P T I O N - - - -
+    # subscribe to positions
     subscribe_to_drones_positions(drone, instance, total_instances)
 
     # spin in a separate thread
@@ -76,16 +68,28 @@ async def run():
     executor.add_node(drone.ros2_node)
     spin_thread = threading.Thread(target=executor.spin)
     spin_thread.start()
-    
-    # keeps updating the drone position 
-    task = asyncio.create_task(refresh_position(drone))
 
-    await mission.test_mission(drone, target_altitude)
 
-    await task
+    # - - - - P U B L I S H I N G - - - -
+    # updates drone position 
+    refresh = asyncio.create_task(refresh_position(drone, 0.5))
+
+
+    # - - - - M I S S I O N - - - -
+    # ISSUE COMMANDS TO THE DRONE
+    # ARM
+    # TAKE OFF
+    # LAND
+
+    # dont let the main thread die
+    await refresh
 
 
 if __name__ == "__main__":
+    # process args
+    instance = int(sys.argv[1])
+    total_instances = int(sys.argv[2])
+
     rclpy.init()
-    asyncio.run(run())
+    asyncio.run(run(instance, total_instances))
     rclpy.shutdown()
