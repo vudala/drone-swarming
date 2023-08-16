@@ -1,11 +1,7 @@
-import asyncio
-
 from rclpy.node import Node
 from mavsdk import System
 
 from std_msgs.msg import ByteMultiArray, ByteMultiArray
-
-import pickle
 
 from functools import partial
 
@@ -17,7 +13,13 @@ import utils
 MAVSDK_SERVER_DEFAULT_PORT = 50051
 
 class Drone(System):
+    """
+    Wraps the ROS2 and MAVSDK functionalities into an abstraction of a UAV
+    """
     def __init__(self, name: str, instance: int):
+        """
+        Inits the attributes, mavsdk_server and ros2 node and publishers
+        """
         super().__init__(port=(MAVSDK_SERVER_DEFAULT_PORT + instance))
 
         self.name = name
@@ -31,8 +33,10 @@ class Drone(System):
         self.subscribed = set()
 
     
-    # wait for the sensors to stabilize
     async def stabilize(self):
+        """
+        Wait for the sensors to stabilize
+        """
         print("Waiting for drone to connect...")
         async for state in self.core.connection_state():
             if state.is_connected:
@@ -45,29 +49,53 @@ class Drone(System):
                 print("-- Global position estimate OK")
                 break
 
-    # update its own position
+
     async def update_position(self):
+        """
+        Update its own position
+        """
         async for pos in self.telemetry.position():
             self.position = pos
             return
         
 
-    # creates a publisher for some topic
     def create_publisher(self, topic: str, data_type: any):
+        """
+        Creates a publisher for some topic, with QoS 1 to allow only the latest info
+
+        Parameters
+        ----------
+        topic: str
+            Name of the ROS2 topic you want to publish, if the topic doesn't exist, creates one with such name
+        data_type: any
+            Any data type supported by ROS2
+        """
         node = self.ros2_node
-        print(self.name + topic + ' publisher created')
         return node.create_publisher(data_type, self.name + topic, 1)
 
 
-    # publish its own position at the topic
     def publish_position(self):
+        """
+        Publish its own position at the position topic
+        """
         msg = ByteMultiArray()
         msg.data = utils.obj_to_bytearray(self.position)
         self.position_publisher.publish(msg)
 
 
-    # subscribes to some topic
     def subscribe_to(self, topic: str, data_type: any, callback: Callable[[str, any], None]):
+        """
+        Subscribes to a topic
+
+        Parameters
+        ----------
+        topic: str
+            Name of the topic to subscribe to
+        data_type: any
+            ROS2 data type to be used at the callback
+        callback: function(topic, msg)
+            A callback function with the first param being the topic and the second the message of the callback param
+        """
         sub = self.ros2_node.create_subscription(
             data_type,
             topic,

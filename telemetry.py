@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import sys
-import threading
 
 import asyncio
 
@@ -10,6 +9,7 @@ from std_msgs.msg import ByteMultiArray
 
 import utils
 from drone import Drone
+import mission
 
 
 async def drone_init(instance: int):
@@ -26,8 +26,17 @@ async def drone_init(instance: int):
     return drone
 
 
-# keeps updating and publishing its own position
 async def refresh_position(drone: Drone, interval: float):
+    """
+    Keeps updating and publishing the drone position
+
+    Parameters
+    ----------
+    drone: Drone
+        Target drone
+    interval: float
+        How much time to wait between iterations
+    """
     while True:
         await drone.update_position()
         drone.publish_position()
@@ -52,37 +61,48 @@ def subscribe_to_drones_positions(drone: Drone, instance: int, total_instances: 
             )
 
 
+# subscribe to all the topics
+def subscribe_to_topics(drone: Drone, instance: int, total_instances: int):
+    subscribe_to_drones_positions(drone, instance, total_instances)
+
+
+# execute all the refreshing coroutines
+async def refresher(drone: Drone):
+    position_ref_coro = refresh_position(drone, 0.5)
+
+    group = asyncio.gather(
+        position_ref_coro
+    )
+
+    await group
+
+
 async def run(instance: int, total_instances: int):
-    # - - - - I N I T - - - -
     drone = await drone_init(instance)
 
     # manual semaphore, gonna change that later
     input('All set, press any button to continue')
 
-    # - - - - S U B S C R I P T I O N - - - -
-    # subscribe to positions
-    subscribe_to_drones_positions(drone, instance, total_instances)
+    subscribe_to_topics(drone, instance, total_instances)
 
-    # spin in a separate thread
-    executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(drone.ros2_node)
-    spin_thread = threading.Thread(target=executor.spin)
-    spin_thread.start()
+    # ros2 spin on separate thread
+    spin_coro = asyncio.to_thread(rclpy.spin, drone.ros2_node)
 
+    # i wanted to run this on a separate thread but still didnt figure how to do without messing with the thread scheduler
+    refresher_coro = refresher(drone) 
 
-    # - - - - P U B L I S H I N G - - - -
-    # updates drone position 
-    refresh = asyncio.create_task(refresh_position(drone, 0.5))
+    # run mission
+    mission_coro = mission.test_mission(drone, 5.5)
 
+    # create tasks for all coroutines
+    group = asyncio.gather(
+        spin_coro,
+        refresher_coro,
+        mission_coro
+    )
 
-    # - - - - M I S S I O N - - - -
-    # ISSUE COMMANDS TO THE DRONE
-    # ARM
-    # TAKE OFF
-    # LAND
-
-    # dont let the main thread die
-    await refresh
+    # keeps waiting for them to finish (which is never)
+    await group
 
 
 if __name__ == "__main__":

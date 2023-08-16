@@ -1,8 +1,10 @@
 import pickle
 
 
-# turns an object into a byte array to be used as ByteMultiArray by ros2
 def obj_to_bytearray(obj: object):
+    """
+    Turns an Object into a byte list to be used as ByteMultiArray by ROS2
+    """
     blob = pickle.dumps(obj)
     data = []
     for x in blob:
@@ -10,7 +12,9 @@ def obj_to_bytearray(obj: object):
     return data
 
 
-# turns a bytearray back to an object
 def bytearray_to_obj(arr: list):
+    """
+    Turns a byte list back to an object
+    """
     blob = b''.join(arr)
     return pickle.loads(blob)
