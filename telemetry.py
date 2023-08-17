@@ -19,7 +19,7 @@ async def drone_init(instance: int):
     sys_addr = 'udp://localhost:' + str(18570 + instance)
     print('Trying to connect to ' + sys_addr)
     await drone.connect(system_address=sys_addr)
-    print('Connected')
+    print('Connected to PX4')
     
     await drone.stabilize()
 
