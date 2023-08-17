@@ -12,7 +12,7 @@ from drone import Drone
 import mission
 
 
-async def drone_init(instance: int):
+async def create_drone(instance: int):
     name = 'drone_' + str(instance)
     drone = Drone(name, instance)
 
@@ -51,9 +51,9 @@ def subscribe_position(topic, msg):
 
 
 # subscribe to the other drones position topic
-def subscribe_to_drones_positions(drone: Drone, instance: int, total_instances: int):
+def subscribe_to_drones_positions(drone: Drone, total_instances: int):
     for i in range(total_instances):
-        if i != instance:
+        if i != drone.instance:
             drone.subscribe_to(
                 'drone_{}/position'.format(i),
                 ByteMultiArray,
@@ -62,8 +62,8 @@ def subscribe_to_drones_positions(drone: Drone, instance: int, total_instances: 
 
 
 # subscribe to all the topics
-def subscribe_to_topics(drone: Drone, instance: int, total_instances: int):
-    subscribe_to_drones_positions(drone, instance, total_instances)
+def subscribe_to_topics(drone: Drone, total_instances: int):
+    subscribe_to_drones_positions(drone, total_instances)
 
 
 # execute all the refreshing coroutines
@@ -77,16 +77,8 @@ async def refresher(drone: Drone):
     await group
 
 
-async def run(instance: int, total_instances: int):
-    drone = await drone_init(instance)
-
-    # manual semaphore, gonna change that later
-    input('All set, press any button to continue')
-
-    subscribe_to_topics(drone, instance, total_instances)
-
-    # ros2 spin on separate thread
-    spin_coro = asyncio.to_thread(rclpy.spin, drone.ros2_node)
+async def execute(drone: Drone, total_drones: int):
+    subscribe_to_topics(drone, total_drones)
 
     # i wanted to run this on a separate thread but still didnt figure how to do without messing with the thread scheduler
     refresher_coro = refresher(drone) 
@@ -96,20 +88,9 @@ async def run(instance: int, total_instances: int):
 
     # create tasks for all coroutines
     group = asyncio.gather(
-        spin_coro,
         refresher_coro,
         mission_coro
     )
 
     # keeps waiting for them to finish (which is never)
     await group
-
-
-if __name__ == "__main__":
-    # process args
-    instance = int(sys.argv[1])
-    total_instances = int(sys.argv[2])
-
-    rclpy.init()
-    asyncio.run(run(instance, total_instances))
-    rclpy.shutdown()

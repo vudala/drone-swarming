@@ -27,6 +27,3 @@ async def assert_action(action):
 
 async def test_mission(drone: Drone, target_altitude: float):
     print("-- Taking off")
-    await assert_action(drone.action.arm())
-    await assert_action(drone.action.set_takeoff_altitude(target_altitude))
-    await assert_action(drone.action.takeoff())
