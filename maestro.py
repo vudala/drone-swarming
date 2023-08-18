@@ -4,36 +4,34 @@ import rclpy
 
 import telemetry
 
-from multiprocessing import Process
-
-import concurrent.futures
-
-# create a bunch of drones
-# wait for them to yield
-# resume their execution
+from multiprocessing import Process, Barrier
 
 
-async def run_drone(instance: int, total_drones: int):
-    drone = await telemetry.create_drone(instance)
-    await telemetry.execute(drone, total_drones)
+async def core(inst, total, barrier):
+    drone = await telemetry.create_drone(inst)
+    barrier.wait()
+    await telemetry.execute(drone, total)
 
 
-def run(instance: int, total_drones: int):
+def run(instance: int, total_drones: int, barrier: Barrier):
     rclpy.init()
-    asyncio.run(run_drone(instance, total_drones))
+    asyncio.run(core(instance, total_drones, barrier))
     rclpy.shutdown()
 
 
 def main(total_drones: int):
+    barrier = Barrier(parties=total_drones)
+
     procs = []
     for i in range(total_drones):
         p = Process(
             target=run,
-            args=[i, total_drones]
+            args=[i, total_drones, barrier],
+            name='maestro_drone_' + str(i)
         )
         p.start()
         procs.append(p)
-
+    
     for p in procs:
         p.join()
 
