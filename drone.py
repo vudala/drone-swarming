@@ -11,6 +11,14 @@ import mission
 
 
 async def create(instance: int):
+    """
+    Creates a drone and expects its health checks for GPS and that kind of stuff
+
+    Parameters
+    ----------
+    instance: int
+        Instance number of drone
+    """
     name = 'drone_' + str(instance)
     drone = DroneCore(name, instance)
 
@@ -30,7 +38,7 @@ async def position_refresher(drone: DroneCore, interval: float):
 
     Parameters
     ----------
-    drone: Drone
+    drone: DroneCore
         Target drone
     interval: float
         How much time to wait between iterations
