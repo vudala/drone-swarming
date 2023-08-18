@@ -13,36 +13,31 @@ import concurrent.futures
 # resume their execution
 
 
-async def init_drones(total_drones: int):
-    creators = []
+async def run_drone(instance: int, total_drones: int):
+    drone = await telemetry.create_drone(instance)
+    await telemetry.execute(drone, total_drones)
+
+
+def run(instance: int, total_drones: int):
+    rclpy.init()
+    asyncio.run(run_drone(instance, total_drones))
+    rclpy.shutdown()
+
+
+def main(total_drones: int):
+    procs = []
     for i in range(total_drones):
-        creators.append(telemetry.create_drone(i))
+        p = Process(
+            target=run,
+            args=[i, total_drones]
+        )
+        p.start()
+        procs.append(p)
 
-    # wait for all the drones to be properly initalized
-    group = asyncio.gather(*creators)
-    await group
+    for p in procs:
+        p.join()
 
-    return group.result()
-
-
-async def main(total_drones: int):
-    drones = await init_drones(total_drones)
-
-    executor = rclpy.executors.SingleThreadedExecutor()
-
-    tasks = []
-    for d in drones:
-        executor.add_node(d.ros2_node)
-        tsk = telemetry.execute(d, total_drones)
-        tasks.append(tsk)
-        
-    spinner = asyncio.to_thread(executor.spin)
-    group = asyncio.gather(*tasks, spinner)
-    await group
-    
 
 if __name__ == '__main__':
     total_drones = int(sys.argv[1])
-    rclpy.init()
-    asyncio.run(main(total_drones))
-    rclpy.shutdown()
+    main(total_drones)

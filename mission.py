@@ -27,3 +27,10 @@ async def assert_action(action):
 
 async def test_mission(drone: Drone, target_altitude: float):
     print("-- Taking off")
+    
+    # TODO: the drone must be properly ready before you takeoff,
+    # gotta find a way to wait for the commander tell its ok 
+    # through MAVSDK
+    await drone.action.arm()
+    await drone.action.set_takeoff_altitude(target_altitude)
+    await drone.action.takeoff()
