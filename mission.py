@@ -1,5 +1,5 @@
 from mavsdk.action import ActionError
-from drone import Drone
+from drone_core import DroneCore
 
 import asyncio
 
@@ -25,7 +25,7 @@ async def assert_action(action):
         asyncio.sleep(0.1)
 
 
-async def test_mission(drone: Drone, target_altitude: float):
+async def test_mission(drone: DroneCore, target_altitude: float):
     print("-- Taking off")
     
     # TODO: the drone must be properly ready before you takeoff,

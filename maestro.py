@@ -2,15 +2,15 @@ import sys
 import asyncio
 import rclpy
 
-import telemetry
+import drone
 
 from multiprocessing import Process, Barrier
 
 
 async def core(inst, total, barrier):
-    drone = await telemetry.create_drone(inst)
+    drone = await drone.create(inst)
     barrier.wait()
-    await telemetry.execute(drone, total)
+    await drone.execute(drone, total)
 
 
 def run(instance: int, total_drones: int, barrier: Barrier):

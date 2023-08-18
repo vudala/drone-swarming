@@ -1,105 +1,99 @@
-from rclpy.node import Node
-from mavsdk import System
+#!/usr/bin/env python3
 
-from std_msgs.msg import ByteMultiArray, ByteMultiArray
+import asyncio
 
-from functools import partial
-
-from collections.abc import Callable
+import rclpy
+from std_msgs.msg import ByteMultiArray
 
 import utils
+from drone_core import DroneCore
+import mission
 
 
-MAVSDK_SERVER_DEFAULT_PORT = 50051
+async def create(instance: int):
+    name = 'drone_' + str(instance)
+    drone = DroneCore(name, instance)
 
-class Drone(System):
-    """
-    Wraps the ROS2 and MAVSDK functionalities into an abstraction of a UAV
-    """
-    def __init__(self, name: str, instance: int):
-        """
-        Inits the attributes, mavsdk_server and ros2 node and publishers
-        """
-        super().__init__(port=(MAVSDK_SERVER_DEFAULT_PORT + instance))
-
-        self.name = name
-
-        self.ros2_node = Node(name)
-        self.instance = instance
-
-        self.position = None
-        self.position_publisher = self.create_publisher('/position', ByteMultiArray)
-
-        self.subscribed = set()
-
+    sys_addr = 'udp://localhost:' + str(18570 + instance)
+    print('Trying to connect to ' + sys_addr)
+    await drone.connect(system_address=sys_addr)
+    print('Connected to PX4')
     
-    async def stabilize(self):
-        """
-        Wait for the sensors to stabilize
-        """
-        print("Waiting for drone to connect...")
-        async for state in self.core.connection_state():
-            if state.is_connected:
-                print(f"-- Connected to drone!")
-                break
+    await drone.stabilize()
 
-        print("Waiting for drone to have a global position estimate...")
-        async for health in self.telemetry.health():
-            if health.is_global_position_ok and health.is_home_position_ok:
-                print("-- Global position estimate OK")
-                break
+    return drone
 
 
-    async def update_position(self):
-        """
-        Update its own position
-        """
-        async for pos in self.telemetry.position():
-            self.position = pos
-            return
-        
+async def position_refresher(drone: DroneCore, interval: float):
+    """
+    Keeps updating and publishing the drone position
 
-    def create_publisher(self, topic: str, data_type: any):
-        """
-        Creates a publisher for some topic, with QoS 1 to allow only the latest info
-
-        Parameters
-        ----------
-        topic: str
-            Name of the ROS2 topic you want to publish, if the topic doesn't exist, creates one with such name
-        data_type: any
-            Any data type supported by ROS2
-        """
-        node = self.ros2_node
-        return node.create_publisher(data_type, self.name + topic, 1)
+    Parameters
+    ----------
+    drone: Drone
+        Target drone
+    interval: float
+        How much time to wait between iterations
+    """
+    while True:
+        await drone.update_position()
+        drone.publish_position()
+        await asyncio.sleep(interval)
 
 
-    def publish_position(self):
-        """
-        Publish its own position at the position topic
-        """
-        msg = ByteMultiArray()
-        msg.data = utils.obj_to_bytearray(self.position)
-        self.position_publisher.publish(msg)
+# callback function of the position subscription
+def subscribe_position(topic, msg):
+    data = msg.data
+    pos = utils.bytearray_to_obj(data)
+    print('{} : {}'.format(topic, str(pos)))
 
 
-    def subscribe_to(self, topic: str, data_type: any, callback: Callable[[str, any], None]):
-        """
-        Subscribes to a topic
+# subscribe to the other drones position topic
+def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
+    for i in range(total_instances):
+        if i != drone.instance:
+            drone.subscribe_to(
+                'drone_{}/position'.format(i),
+                ByteMultiArray,
+                subscribe_position
+            )
 
-        Parameters
-        ----------
-        topic: str
-            Name of the topic to subscribe to
-        data_type: any
-            ROS2 data type to be used at the callback
-        callback: function(topic, msg)
-            A callback function with the first param being the topic and the second the message of the callback param
-        """
-        sub = self.ros2_node.create_subscription(
-            data_type,
-            topic,
-            partial(callback, topic),
-            1
-        )
-        self.subscribed.add(sub)
+
+# subscribe to all the topics
+def subscribe_to_topics(drone: DroneCore, total_instances: int):
+    subscribe_to_drones_positions(drone, total_instances)
+
+
+# execute all the refreshing coroutines
+async def refresher(drone: DroneCore):
+    position_ref_coro = position_refresher(drone, 0.5)
+
+    group = asyncio.gather(
+        position_ref_coro
+    )
+
+    await group
+
+
+async def execute(drone: DroneCore, total_drones: int):
+    subscribe_to_topics(drone, total_drones)
+
+    # ros2 spin on separate thread
+    spin_coro = asyncio.to_thread(rclpy.spin, drone.ros2_node)
+
+    # i wanted to run this on a separate thread but still didnt figure
+    # how to do without messing with the thread scheduler
+    refresher_coro = refresher(drone)
+
+    # run mission
+    mission_coro = mission.test_mission(drone, 5.5)
+
+    # create tasks for all coroutines
+    group = asyncio.gather(
+        spin_coro,
+        refresher_coro,
+        mission_coro
+    )
+
+    # keeps waiting for them to finish (which is never)
+    await group
