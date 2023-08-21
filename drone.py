@@ -96,10 +96,11 @@ async def core(drone: DroneCore, total_drones: int):
     # ros2 spin on separate thread
     spin_coro = asyncio.to_thread(rclpy.spin, drone.ros2_node)
 
-    # i wanted to run this on a separate thread but still didnt figure
-    # how to do without messing with the thread scheduler
+    # TODO: i wanted to run this on a separate thread but still didnt figure
+    # how to do without messing with the thread scheduler 
     refresher_coro = refresher(drone)
 
+    # TODO: pass the mission to execute via param
     # run mission
     mission_coro = mission.test_mission(drone, 5.5)
 
