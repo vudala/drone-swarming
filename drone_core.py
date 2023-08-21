@@ -69,7 +69,7 @@ class DroneCore(System):
 
     def create_publisher(self, topic: str, data_type: any):
         """
-        Creates a publisher for some topic, with QoS 1 to allow only the latest info
+        Creates a publisher for some topic, with QoS 1 to allow only the latest info to be transmited
 
         Parameters
         ----------

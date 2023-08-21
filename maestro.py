@@ -11,6 +11,7 @@ from multiprocessing import Process, Barrier
 def root_path():
     return os.path.dirname(os.path.abspath(__file__))
 
+
 def main(total_drones: int):
     """
     Creates multiple drones and syncs them
