@@ -1,23 +1,15 @@
+import os
 import sys
-import asyncio
-import rclpy
+
+from logger import Logger
 
 import drone
 
 from multiprocessing import Process, Barrier
 
 
-async def core(inst, total, barrier):
-    dro = await drone.create(inst)
-    barrier.wait()
-    await drone.execute(dro, total)
-
-
-def run(instance: int, total_drones: int, barrier: Barrier):
-    rclpy.init()
-    asyncio.run(core(instance, total_drones, barrier))
-    rclpy.shutdown()
-
+def root_path():
+    return os.path.dirname(os.path.abspath(__file__))
 
 def main(total_drones: int):
     """
@@ -28,18 +20,30 @@ def main(total_drones: int):
     total_drones: int
         How many drones to create
     """
+    path = os.path.join(root_path(), 'log')
+    log = Logger(path)
+
     barrier = Barrier(parties=total_drones)
 
     procs = []
-    for i in range(total_drones):
+    for inst in range(total_drones):
         p = Process(
-            target=run,
-            args=[i, total_drones, barrier],
-            name='maestro_drone_' + str(i)
+            target=drone.execute,
+            args=[
+                inst,
+                total_drones,
+                barrier,
+                path
+            ],
+            name='maestro_drone_' + str(inst)
         )
         p.start()
         procs.append(p)
+
+        log.info('Drone {} created'.format(inst))
     
+    log.info('All drones were created')
+
     for p in procs:
         p.join()
 

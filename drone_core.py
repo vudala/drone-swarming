@@ -9,14 +9,17 @@ from collections.abc import Callable
 
 import utils
 
+from logger import Logger
+
 
 MAVSDK_SERVER_DEFAULT_PORT = 50051
+
 
 class DroneCore(System):
     """
     Wraps the ROS2 and MAVSDK functionalities into an abstraction of a UAV
     """
-    def __init__(self, name: str, instance: int):
+    def __init__(self, name: str, instance: int, logger_path: str):
         """
         Inits the attributes, mavsdk_server and ros2 node and publishers
         """
@@ -32,21 +35,26 @@ class DroneCore(System):
 
         self.subscribed = set()
 
+        self.logger = Logger(
+            logger_path,
+            'drone_{}'.format(instance)
+        )
+
     
     async def stabilize(self):
         """
         Wait for the sensors to stabilize
         """
-        print("Waiting for drone to connect...")
+        self.logger.info("Waiting for drone to connect...")
         async for state in self.core.connection_state():
             if state.is_connected:
-                print(f"-- Connected to drone!")
+                self.logger.info(f"-- Connected to drone!")
                 break
 
-        print("Waiting for drone to have a global position estimate...")
+        self.logger.info("Waiting for drone to have a global position estimate...")
         async for health in self.telemetry.health():
             if health.is_global_position_ok and health.is_home_position_ok:
-                print("-- Global position estimate OK")
+                self.logger.info("-- Global position estimate OK")
                 break
 
 
@@ -66,9 +74,7 @@ class DroneCore(System):
         Parameters
         ----------
         topic: str
-            Name of the ROS2 topic you want to publish, if the topic doesn't exist, creates one with such name
-        data_type: any
-            Any data type supported by ROS2
+            Name of the ROS2 topic you want tocreate_publisher
         """
         node = self.ros2_node
         return node.create_publisher(data_type, self.name + topic, 1)
@@ -99,7 +105,7 @@ class DroneCore(System):
         sub = self.ros2_node.create_subscription(
             data_type,
             topic,
-            partial(callback, topic),
+            partial(callback, self, topic),
             1
         )
         self.subscribed.add(sub)

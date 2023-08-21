@@ -26,7 +26,7 @@ async def assert_action(action):
 
 
 async def test_mission(drone: DroneCore, target_altitude: float):
-    print("-- Taking off")
+    drone.logger.info("-- Taking off")
     
     # TODO: the drone must be properly ready before you takeoff,
     # gotta find a way to wait for the commander tell its ok 

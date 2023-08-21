@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
+# asyncio
 
 import asyncio
 
+# ros2 module
 import rclpy
 from std_msgs.msg import ByteMultiArray
 
+# my modules
 import utils
 from drone_core import DroneCore
 import mission
 
 
-async def create(instance: int):
+async def create(instance: int, logger_path: str):
     """
     Creates a drone and expects its health checks for GPS and that kind of stuff
 
@@ -20,12 +23,12 @@ async def create(instance: int):
         Instance number of drone
     """
     name = 'drone_' + str(instance)
-    drone = DroneCore(name, instance)
+    drone = DroneCore(name, instance, logger_path)
 
     sys_addr = 'udp://localhost:' + str(18570 + instance)
-    print('Trying to connect to ' + sys_addr)
+    drone.logger.info('Trying to connect to ' + sys_addr)
     await drone.connect(system_address=sys_addr)
-    print('Connected to PX4')
+    drone.logger.info('Connected to PX4')
     
     await drone.stabilize()
 
@@ -50,10 +53,11 @@ async def position_refresher(drone: DroneCore, interval: float):
 
 
 # callback function of the position subscription
-def subscribe_position(topic, msg):
+def subscribe_position(drone: DroneCore, topic: str, msg):
     data = msg.data
     pos = utils.bytearray_to_obj(data)
-    print('{} : {}'.format(topic, str(pos)))
+
+    drone.logger.info('{} : {}'.format(topic, str(pos)))
 
 
 # subscribe to the other drones position topic
@@ -83,8 +87,10 @@ async def refresher(drone: DroneCore):
     await group
 
 
-async def execute(drone: DroneCore, total_drones: int):
+async def core(drone: DroneCore, total_drones: int):
     subscribe_to_topics(drone, total_drones)
+
+    drone.logger.info('Subscribed to the topics')
 
     # ros2 spin on separate thread
     spin_coro = asyncio.to_thread(rclpy.spin, drone.ros2_node)
@@ -105,3 +111,18 @@ async def execute(drone: DroneCore, total_drones: int):
 
     # keeps waiting for them to finish (which is never)
     await group
+
+
+async def execute_core(inst, total, barrier, logger_path):
+    dro = await create(inst, logger_path)
+    dro.logger.info('Drone successfully created')
+    barrier.wait()
+    await core(dro, total)
+
+
+def execute(inst: int, total: int, barrier, logger_path):
+    rclpy.init()
+    asyncio.run(
+        execute_core(inst, total, barrier, logger_path)
+    )
+    rclpy.shutdown()
