@@ -26,10 +26,11 @@ async def create(instance: int, logger_path: str):
     drone = DroneCore(name, instance, logger_path)
 
     sys_addr = 'udp://localhost:' + str(18570 + instance)
+
     drone.logger.info('Trying to connect to ' + sys_addr)
     await drone.connect(system_address=sys_addr)
     drone.logger.info('Connected to PX4')
-    
+
     await drone.stabilize()
 
     return drone
@@ -109,6 +110,8 @@ async def core(drone: DroneCore, total_drones: int):
         mission_coro
     )
 
+    drone.logger.info('Running all coroutines')
+
     # keeps waiting for them to finish (which is never)
     await group
 
@@ -117,6 +120,8 @@ async def execute_core(inst, total, barrier, logger_path):
     dro = await create(inst, logger_path)
     dro.logger.info('Drone successfully created')
     barrier.wait()
+    dro.logger.info('All drones synced')
+    dro.logger.info('Starting the drone')
     await core(dro, total)
 
 

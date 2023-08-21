@@ -24,6 +24,9 @@ def main(total_drones: int):
     path = os.path.join(root_path(), 'log')
     log = Logger(path)
 
+    log.info('Maestro initialized')
+    log.info('Creating the drones')
+
     barrier = Barrier(parties=total_drones)
 
     procs = []
@@ -44,9 +47,12 @@ def main(total_drones: int):
         log.info('Drone {} created'.format(inst))
     
     log.info('All drones were created')
+    log.info('Waiting for the to finish execution') 
 
     for p in procs:
         p.join()
+
+    log.info('Done')
 
 
 if __name__ == '__main__':
