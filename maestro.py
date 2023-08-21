@@ -47,7 +47,7 @@ def main(total_drones: int):
         log.info('Drone {} created'.format(inst))
     
     log.info('All drones were created')
-    log.info('Waiting for the to finish execution') 
+    log.info('Waiting for the drones to finish execution') 
 
     for p in procs:
         p.join()
