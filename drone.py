@@ -94,6 +94,8 @@ async def core(drone: DroneCore, total_drones: int):
     drone.logger.info('Subscribed to the topics')
 
     # ros2 spin on separate thread
+    # TODO: this coroutine is causing thread errors,
+    # because asyncio is not thread safe, so we gotta fix this
     spin_coro = asyncio.to_thread(rclpy.spin, drone.ros2_node)
 
     # TODO: i wanted to run this on a separate thread but still didnt figure
