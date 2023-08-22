@@ -120,6 +120,7 @@ async def core(drone: DroneCore, total_drones: int):
 async def execute_core(inst, total, barrier, logger_path):
     dro = await create(inst, logger_path)
     dro.logger.info('Drone successfully created')
+    dro.logger.info('Synchronizing with the other UAVs')
     barrier.wait()
     dro.logger.info('All drones synced')
     dro.logger.info('Starting the drone')
