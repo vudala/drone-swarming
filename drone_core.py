@@ -89,7 +89,7 @@ class DroneCore(System):
         self.position_publisher.publish(msg)
 
 
-    def subscribe_to(self, topic: str, data_type: any, callback: Callable[[str, any], None]):
+    def subscribe_to(self, topic: str, data_type: any, callback: Callable[[any, str, any], None]):
         """
         Subscribes to a topic
 
@@ -99,7 +99,7 @@ class DroneCore(System):
             Name of the topic to subscribe to
         data_type: any
             ROS2 data type to be used at the callback
-        callback: function(topic, msg)
+        callback: function(drone, topic, msg)
             A callback function with the first param being the topic and the second the message of the callback param
         """
         sub = self.ros2_node.create_subscription(
