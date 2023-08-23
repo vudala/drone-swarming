@@ -13,6 +13,9 @@ from drone_core import DroneCore
 import mission
 
 
+PX4_SITL_DEFAULT_PORT = 14540 
+
+
 async def create(instance: int, logger_path: str):
     """
     Creates a drone and expects its health checks for GPS and that kind of stuff
@@ -25,7 +28,7 @@ async def create(instance: int, logger_path: str):
     name = 'drone_' + str(instance)
     drone = DroneCore(name, instance, logger_path)
 
-    sys_addr = 'udp://localhost:' + str(18570 + instance)
+    sys_addr = 'udp://:' + str(PX4_SITL_DEFAULT_PORT + instance)
 
     drone.logger.info('Trying to connect to ' + sys_addr)
     await drone.connect(system_address=sys_addr)
@@ -104,7 +107,7 @@ async def core(drone: DroneCore, total_drones: int):
 
     # TODO: pass the mission to execute via param
     # run mission
-    mission_coro = mission.test_mission(drone, 5.5)
+    mission_coro = mission.test_mission(drone, 1 + drone.instance)
 
     # create tasks for all coroutines
     group = asyncio.gather(
