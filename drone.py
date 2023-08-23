@@ -12,9 +12,10 @@ import utils
 from drone_core import DroneCore
 import mission
 
-
+POSITION_REFRESH_INTERVAL = 0.5
 PX4_SITL_DEFAULT_PORT = 14540 
 
+drones = []
 
 async def create(instance: int, logger_path: str):
     """
@@ -45,10 +46,10 @@ async def position_refresher(drone: DroneCore, interval: float):
 
     Parameters
     ----------
-    drone: DroneCore
-        Target drone
-    interval: float
-        How much time to wait between iterations
+    - drone: DroneCore
+        - Target drone
+    - interval: float
+        - How much time to wait between iterations (seconds)
     """
     while True:
         await drone.update_position()
@@ -57,11 +58,13 @@ async def position_refresher(drone: DroneCore, interval: float):
 
 
 # callback function of the position subscription
-def subscribe_position(drone: DroneCore, topic: str, msg):
+def subscribe_position(drone: DroneCore, topic: str, ref: int, msg):
     data = msg.data
     pos = utils.bytearray_to_obj(data)
 
-    drone.logger.info('{} : {}'.format(topic, str(pos)))
+    drones[ref]['position'] = pos
+
+#    drone.logger.info('{} : {}'.format(topic, drones[ref]['position']))
 
 
 # subscribe to the other drones position topic
@@ -71,7 +74,8 @@ def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
             drone.subscribe_to(
                 'drone_{}/position'.format(i),
                 ByteMultiArray,
-                subscribe_position
+                subscribe_position,
+                i
             )
 
 
@@ -82,7 +86,7 @@ def subscribe_to_topics(drone: DroneCore, total_instances: int):
 
 # execute all the refreshing coroutines
 async def refresher(drone: DroneCore):
-    position_ref_coro = position_refresher(drone, 0.5)
+    position_ref_coro = position_refresher(drone, POSITION_REFRESH_INTERVAL)
 
     group = asyncio.gather(
         position_ref_coro
@@ -91,8 +95,21 @@ async def refresher(drone: DroneCore):
     await group
 
 
-async def core(drone: DroneCore, total_drones: int):
-    subscribe_to_topics(drone, total_drones)
+async def safechecker(drone: DroneCore, total: int):
+    while True:
+        for i in range(total):
+            # checks if its not itself and if the i drone has already published its position
+            if i != drone.instance and 'position' in drones[i]:
+                dist = utils.distance(drone.position, drones[i]['position'])
+                if (dist <= 100.0):
+                    # do something
+                    # stall and wait for the path to be clear
+                    drone.mission.pause_mission()
+        await asyncio.sleep(0.25)
+
+
+async def core(drone: DroneCore, total: int):
+    subscribe_to_topics(drone, total)
 
     drone.logger.info('Subscribed to the topics')
 
@@ -107,13 +124,16 @@ async def core(drone: DroneCore, total_drones: int):
 
     # TODO: pass the mission to execute via param
     # run mission
-    mission_coro = mission.test_mission(drone, 1 + drone.instance)
+#    mission_coro = mission.test_mission(drone, 1 + drone.instance)
+
+    safe_coro = safechecker(drone, total)
 
     # create tasks for all coroutines
     group = asyncio.gather(
         spin_coro,
         refresher_coro,
-        mission_coro
+#        mission_coro,
+        safe_coro
     )
 
     drone.logger.info('Running all coroutines')
@@ -122,19 +142,26 @@ async def core(drone: DroneCore, total_drones: int):
     await group
 
 
-async def execute_core(inst, total, barrier, logger_path):
+async def execute_core(inst, total, barrier, logger_path, mission):
+    # init the drone data storage
+    for i in range(total):
+        if i != inst:
+            drones.append(dict())
+        else:
+            drones.append(None)
+    
     dro = await create(inst, logger_path)
     dro.logger.info('Drone successfully created')
     dro.logger.info('Synchronizing with the other UAVs')
     barrier.wait()
     dro.logger.info('All drones synced')
     dro.logger.info('Starting the drone')
-    await core(dro, total)
+    await core(dro, total, mission)
 
 
-def execute(inst: int, total: int, barrier, logger_path):
+def execute(inst: int, total: int, barrier, logger_path, mission):
     rclpy.init()
     asyncio.run(
-        execute_core(inst, total, barrier, logger_path)
+        execute_core(inst, total, barrier, logger_path, mission)
     )
     rclpy.shutdown()

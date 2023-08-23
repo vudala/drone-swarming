@@ -73,7 +73,7 @@ class DroneCore(System):
 
         Parameters
         ----------
-        topic: str
+        - topic: str
             Name of the ROS2 topic you want tocreate_publisher
         """
         node = self.ros2_node
@@ -89,23 +89,25 @@ class DroneCore(System):
         self.position_publisher.publish(msg)
 
 
-    def subscribe_to(self, topic: str, data_type: any, callback: Callable[[any, str, any], None]):
+    def subscribe_to(self, topic: str, data_type: any, callback: Callable[[any, str, int, any], None], ref: int):
         """
         Subscribes to a topic
 
         Parameters
         ----------
-        topic: str
-            Name of the topic to subscribe to
-        data_type: any
-            ROS2 data type to be used at the callback
-        callback: function(drone, topic, msg)
-            A callback function with the first param being the topic and the second the message of the callback param
+        - topic: str
+            - Name of the topic to subscribe to
+        - data_type: any
+            - ROS2 data type to be used at the callback
+        - callback: function(drone, topic, ref, msg)
+            - A callback function with the first param being the topic and the second the message of the callback param
+        - ref: int
+            - Instance that it refers to
         """
         sub = self.ros2_node.create_subscription(
             data_type,
             topic,
-            partial(callback, self, topic),
+            partial(callback, self, topic, ref),
             1
         )
         self.subscribed.add(sub)

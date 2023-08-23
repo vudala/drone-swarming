@@ -37,7 +37,8 @@ def main(total_drones: int):
                 inst,
                 total_drones,
                 barrier,
-                path
+                path,
+                './qgc_custom.plan'
             ],
             name='maestro_drone_' + str(inst)
         )
