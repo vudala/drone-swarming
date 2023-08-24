@@ -2,7 +2,7 @@
 Implementing a drone swarm on PX4/AirSim simulation
 
 ### Requirements
-You need all these programs:
+You will need all these libraries:
 
 - Python client for ROS2:
   - Install: https://github.com/ros2/rclpy

@@ -8,6 +8,8 @@ import drone
 from multiprocessing import Process, Barrier
 
 
+import json
+
 def root_path():
     return os.path.dirname(os.path.abspath(__file__))
 
@@ -21,24 +23,29 @@ def main(total_drones: int):
     total_drones: int
         How many drones to create
     """
-    path = os.path.join(root_path(), 'log')
-    log = Logger(path)
+    log_path = os.path.join(root_path(), 'log')
+    log = Logger(log_path)
 
     log.info('Maestro initialized')
     log.info('Creating the drones')
 
     barrier = Barrier(parties=total_drones)
 
+    log.info('Reading missions')
+    f = open('missions.json')
+    data = json.load(f)
+
     procs = []
     for inst in range(total_drones):
+        mission_path = data.get(f'drone_{str(inst)}', None)
         p = Process(
             target=drone.execute,
             args=[
                 inst,
                 total_drones,
                 barrier,
-                path,
-                './qgc_custom.plan'
+                log_path,
+                mission_path
             ],
             name='maestro_drone_' + str(inst)
         )

@@ -12,8 +12,12 @@ import utils
 from drone_core import DroneCore
 import mission
 
-POSITION_REFRESH_INTERVAL = 0.5
+
+
 PX4_SITL_DEFAULT_PORT = 14540 
+
+POSITION_REFRESH_INTERVAL = 0.5
+DISTANCE_THRESHOLD_CM = 300
 
 drones = []
 
@@ -101,40 +105,43 @@ async def safechecker(drone: DroneCore, total: int):
             # checks if its not itself and if the i drone has already published its position
             if i != drone.instance and 'position' in drones[i]:
                 dist = utils.distance(drone.position, drones[i]['position'])
-                if (dist <= 100.0):
+                if dist <= float(DISTANCE_THRESHOLD_CM):
                     # do something
                     # stall and wait for the path to be clear
-                    drone.mission.pause_mission()
-        await asyncio.sleep(0.25)
+                    drone.logger.warning('DRONE TOO CLOSE')
+                    await drone.mission.pause_mission()
+                    await drone.action.hold()
+        await asyncio.sleep(0.05)
 
 
-async def core(drone: DroneCore, total: int):
+async def core(drone: DroneCore, total: int, mission_path: str):
     subscribe_to_topics(drone, total)
 
     drone.logger.info('Subscribed to the topics')
 
+    coros = []
+
+    await drone.action.set_maximum_speed(1)
+
     # ros2 spin on separate thread
     # TODO: this coroutine is causing thread errors,
     # because asyncio is not thread safe, so we gotta fix this
-    spin_coro = asyncio.to_thread(rclpy.spin, drone.ros2_node)
+    coros.append(
+        asyncio.to_thread(rclpy.spin, drone.ros2_node)
+    ) 
 
     # TODO: i wanted to run this on a separate thread but still didnt figure
     # how to do without messing with the thread scheduler 
-    refresher_coro = refresher(drone)
+    coros.append(refresher(drone))
 
-    # TODO: pass the mission to execute via param
     # run mission
-#    mission_coro = mission.test_mission(drone, 1 + drone.instance)
+    if mission_path != None:
+        coros.append(mission.run_mission(drone, mission_path)) 
 
-    safe_coro = safechecker(drone, total)
+    coros.append(safechecker(drone, total)) 
 
     # create tasks for all coroutines
-    group = asyncio.gather(
-        spin_coro,
-        refresher_coro,
-#        mission_coro,
-        safe_coro
-    )
+    group = asyncio.gather(*coros)
 
     drone.logger.info('Running all coroutines')
 

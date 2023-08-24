@@ -53,7 +53,8 @@ class DroneCore(System):
 
         self.logger.info("Waiting for drone to have a global position estimate...")
         async for health in self.telemetry.health():
-            if health.is_global_position_ok and health.is_home_position_ok:
+            if (health.is_global_position_ok 
+                and health.is_home_position_ok):
                 self.logger.info("-- Global position estimate OK")
                 break
 

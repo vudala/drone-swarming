@@ -163,3 +163,4 @@ cython_debug/
 # Custom ignore
 sandbox
 log
+custom_missions

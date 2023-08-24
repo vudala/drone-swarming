@@ -3,6 +3,8 @@ from drone_core import DroneCore
 
 import asyncio
 
+from mavsdk.calibration import CalibrationError
+
 
 # this need to be reformulated, it has problems with it
 async def assert_action(action):
@@ -22,7 +24,7 @@ async def assert_action(action):
             print(err)
         except Exception as err:
             print(err)
-        asyncio.sleep(0.1)
+        await asyncio.sleep(0.1)
 
 
 async def test_mission(drone: DroneCore, target_altitude: float):
@@ -34,3 +36,39 @@ async def test_mission(drone: DroneCore, target_altitude: float):
     await drone.action.arm()
     await drone.action.set_takeoff_altitude(target_altitude)
     await drone.action.takeoff()
+
+
+async def perform_calibration(drone: DroneCore):
+    try :
+        drone.logger.info("-- Starting gyroscope calibration")
+        async for progress_data in drone.calibration.calibrate_gyro():
+            drone.logger.info(progress_data)
+        drone.logger.info("-- Gyroscope calibration finished")
+
+    except CalibrationError as err:
+        drone.logger.warning(err)
+
+
+async def perform_health_checks(drone: DroneCore):
+    drone.logger.info("Waiting for drone to have a global position estimate...")
+    async for health in drone.telemetry.health():
+        if health.is_global_position_ok and health.is_home_position_ok:
+            drone.logger.info("-- Global position estimate OK")
+            break
+
+
+async def run_mission(drone: DroneCore, mission: str):
+    mission_data = await drone.mission_raw.import_qgroundcontrol_mission(mission)
+
+    await drone.mission.set_return_to_launch_after_mission(True)
+
+    drone.logger.info("-- Uploading mission")
+    await drone.mission_raw.upload_mission(mission_data.mission_items)
+
+    await perform_health_checks(drone)
+
+    drone.logger.info("-- Arming")
+    await drone.action.arm()
+
+    drone.logger.info("-- Starting mission")
+    await drone.mission.start_mission()
