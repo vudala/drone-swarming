@@ -164,3 +164,4 @@ cython_debug/
 sandbox
 log
 custom_missions
+missions.json
