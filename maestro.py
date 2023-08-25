@@ -10,9 +10,24 @@ import drone
 
 def root_path():
     return os.path.dirname(os.path.abspath(__file__))
+        
 
+def read_missions(logger, path):
+    if os.path.exists(path):
+        logger.info('Reading missions from {}'.format(path))
+        f = open(path)
+        return json.load(f)
+    else:
+        at_root_path = os.path.join(__file__, 'missions.json')
+        
+        if os.path.exists(at_root_path):
+            logger.info('Reading missions from {}'.format(at_root_path))
+            f = open(path)
+            return json.load(f)
+    
+    return None   
 
-def main(total_drones: int):
+def main(total_drones: int, missions_path: str):
     """
     Creates multiple drones and syncs them
 
@@ -29,20 +44,18 @@ def main(total_drones: int):
 
     barrier = Barrier(parties=total_drones)
 
-
-    mission_data = None
-    if os.path.exists('missions.json'):
-        log.info('Reading missions')
-        f = open('missions.json')
-        try:
-            data = json.load(f)
-        except Exception as e:
-            log.error(e)
+    m_data = read_missions(log, missions_path)
 
     procs = []
     for inst in range(total_drones):
-        if mission_data:
-            mission_path = data.get(f'drone_{str(inst)}', None)
+        m_path = None
+
+        if m_data:
+            m_path = m_data.get(f'drone_{str(inst)}', None)
+
+        if m_path == None:
+            log.info(f'No mission for Drone {str(inst)}')
+        
         p = Process(
             target=drone.execute,
             args=[
@@ -50,7 +63,7 @@ def main(total_drones: int):
                 total_drones,
                 barrier,
                 log_path,
-                mission_path
+                m_path
             ],
             name='maestro_drone_' + str(inst)
         )
@@ -75,9 +88,16 @@ def get_args():
     )
 
     parser.add_argument(
-        'total_drones', metavar='N',
-        type=int, nargs=1,
-        help='number of drones instances'
+        'drones_n', metavar='drones_n',
+        type=int,
+        help='number of drone instances'
+    )
+
+    parser.add_argument(
+        '--missions', dest='miss_path',
+        metavar='filepath', type=str,
+        default='missions.json',
+        help='path for missions file'
     )
 
     return parser.parse_args()
@@ -85,4 +105,4 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.total_drones)
+    main(args.drones_n, args.miss_path)
