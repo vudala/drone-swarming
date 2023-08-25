@@ -31,9 +31,13 @@ def main(total_drones: int):
 
     barrier = Barrier(parties=total_drones)
 
-    log.info('Reading missions')
-    f = open('missions.json')
-    data = json.load(f)
+    if os.path.exists('missions.json'):
+        log.info('Reading missions')
+        f = open('missions.json')
+        try:
+            data = json.load(f)
+        except Exception as e:
+            log.error(e)
 
     procs = []
     for inst in range(total_drones):
