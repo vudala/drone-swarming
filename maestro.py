@@ -98,7 +98,7 @@ def get_args():
         '--missions', dest='miss_path',
         metavar='filepath', type=str,
         default='missions.json',
-        help='path for missions file'
+        help='path for .json missions file'
     )
 
     return parser.parse_args()
