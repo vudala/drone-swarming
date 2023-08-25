@@ -25,7 +25,8 @@ def read_missions(logger, path):
             f = open(path)
             return json.load(f)
     
-    return None   
+    return None
+
 
 def main(total_drones: int, missions_path: str):
     """
