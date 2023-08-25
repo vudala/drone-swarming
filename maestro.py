@@ -1,14 +1,12 @@
 import os
 import argparse
-
-from logger import Logger
-
-import drone
-
+import json
 from multiprocessing import Process, Barrier
 
 
-import json
+from logger import Logger
+import drone
+
 
 def root_path():
     return os.path.dirname(os.path.abspath(__file__))
