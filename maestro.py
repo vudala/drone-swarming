@@ -1,5 +1,5 @@
 import os
-import sys
+import argparse
 
 from logger import Logger
 
@@ -67,6 +67,21 @@ def main(total_drones: int):
     log.info('Done')
 
 
+def get_args():
+    parser = argparse.ArgumentParser(
+        prog='python3 maestro.py',
+        description='Initiates the drone swarm'
+    )
+
+    parser.add_argument(
+        'total_drones', metavar='N',
+        type=int, nargs=1,
+        help='number of drones instances'
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
-    total_drones = int(sys.argv[1])
-    main(total_drones)
+    args = get_args()
+    main(args.total_drones)
