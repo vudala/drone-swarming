@@ -29,6 +29,8 @@ def main(total_drones: int):
 
     barrier = Barrier(parties=total_drones)
 
+
+    mission_data = None
     if os.path.exists('missions.json'):
         log.info('Reading missions')
         f = open('missions.json')
@@ -39,7 +41,8 @@ def main(total_drones: int):
 
     procs = []
     for inst in range(total_drones):
-        mission_path = data.get(f'drone_{str(inst)}', None)
+        if mission_data:
+            mission_path = data.get(f'drone_{str(inst)}', None)
         p = Process(
             target=drone.execute,
             args=[
