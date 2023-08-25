@@ -68,8 +68,6 @@ def subscribe_position(drone: DroneCore, topic: str, ref: int, msg):
 
     drones[ref]['position'] = pos
 
-#    drone.logger.info('{} : {}'.format(topic, drones[ref]['position']))
-
 
 # subscribe to the other drones position topic
 def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
