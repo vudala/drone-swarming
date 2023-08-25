@@ -19,13 +19,15 @@ class DroneCore(System):
     """
     Wraps the ROS2 and MAVSDK functionalities into an abstraction of a UAV
     """
-    def __init__(self, name: str, instance: int, logger_path: str):
+    def __init__(self, name: str, instance: int, priority: int, logger_path: str):
         """
         Inits the attributes, mavsdk_server and ros2 node and publishers
         """
         super().__init__(port=(MAVSDK_SERVER_DEFAULT_PORT + instance))
 
         self.name = name
+
+        self.priority = priority
 
         self.ros2_node = Node(name)
         self.instance = instance
@@ -53,8 +55,7 @@ class DroneCore(System):
 
         self.logger.info("Waiting for drone to have a global position estimate...")
         async for health in self.telemetry.health():
-            if (health.is_global_position_ok 
-                and health.is_home_position_ok):
+            if health.is_global_position_ok and health.is_home_position_ok:
                 self.logger.info("-- Global position estimate OK")
                 break
 

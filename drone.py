@@ -16,12 +16,12 @@ import mission
 
 PX4_SITL_DEFAULT_PORT = 14540 
 
-POSITION_REFRESH_INTERVAL = 0.5
-DISTANCE_THRESHOLD_CM = 300
+POSITION_REFRESH_INTERVAL_SEC = 0.1
+DISTANCE_THRESHOLD_CM = 250
 
 drones = []
 
-async def create(instance: int, logger_path: str):
+async def create(instance: int, priority: int, logger_path: str):
     """
     Creates a drone and expects its health checks for GPS and that kind of stuff
 
@@ -31,7 +31,7 @@ async def create(instance: int, logger_path: str):
         Instance number of drone
     """
     name = 'drone_' + str(instance)
-    drone = DroneCore(name, instance, logger_path)
+    drone = DroneCore(name, instance, priority, logger_path)
 
     sys_addr = 'udp://:' + str(PX4_SITL_DEFAULT_PORT + instance)
 
@@ -90,7 +90,7 @@ def subscribe_to_topics(drone: DroneCore, total_instances: int):
 
 # execute all the refreshing coroutines
 async def refresher(drone: DroneCore):
-    position_ref_coro = position_refresher(drone, POSITION_REFRESH_INTERVAL)
+    position_ref_coro = position_refresher(drone, POSITION_REFRESH_INTERVAL_SEC)
 
     group = asyncio.gather(
         position_ref_coro
@@ -124,17 +124,14 @@ async def core(drone: DroneCore, total: int, mission_path: str):
     await drone.action.set_maximum_speed(1)
 
     # ros2 spin on separate thread
-    # TODO: this coroutine is causing thread errors,
+    # TODO: this coroutine is causing thread errors
     # because asyncio is not thread safe, so we gotta fix this
     coros.append(
         asyncio.to_thread(rclpy.spin, drone.ros2_node)
     ) 
 
-    # TODO: i wanted to run this on a separate thread but still didnt figure
-    # how to do without messing with the thread scheduler 
     coros.append(refresher(drone))
 
-    # run mission
     if mission_path != None:
         coros.append(mission.run_mission(drone, mission_path)) 
 
@@ -157,7 +154,10 @@ async def execute_core(inst, total, barrier, logger_path, mission):
         else:
             drones.append(None)
     
-    dro = await create(inst, logger_path)
+    # defines the priority of the drone, for now is an arbitrary value
+    priority = total - inst - 1
+
+    dro = await create(inst, priority, logger_path)
     dro.logger.info('Drone successfully created')
     dro.logger.info('Synchronizing with the other UAVs')
     barrier.wait()
