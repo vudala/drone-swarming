@@ -18,11 +18,10 @@ def read_missions(logger, path):
         f = open(path)
         return json.load(f)
     else:
-        at_root_path = os.path.join(__file__, 'missions.json')
-        
+        at_root_path = os.path.join(root_path(), 'missions.json')
         if os.path.exists(at_root_path):
             logger.info('Reading missions from {}'.format(at_root_path))
-            f = open(path)
+            f = open(at_root_path)
             return json.load(f)
     
     return None
