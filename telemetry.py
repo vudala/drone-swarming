@@ -51,7 +51,7 @@ def subscribe_position(topic, msg):
 
 
 # subscribe to the other drones position topic
-def subscribe_to_drones_positions(drone: Drone, instance: int, total_instances: int):
+def subscribe_to_positions(drone: Drone, instance: int, total_instances: int):
     for i in range(total_instances):
         if i != instance:
             drone.subscribe_to(
@@ -63,7 +63,7 @@ def subscribe_to_drones_positions(drone: Drone, instance: int, total_instances: 
 
 # subscribe to all the topics
 def subscribe_to_topics(drone: Drone, instance: int, total_instances: int):
-    subscribe_to_drones_positions(drone, instance, total_instances)
+    subscribe_to_positions(drone, instance, total_instances)
 
 
 # execute all the refreshing coroutines
