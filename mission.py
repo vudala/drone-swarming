@@ -14,7 +14,8 @@ async def assert_action(action):
     an exception during its execution
     
     action: Coroutine
-        This is a coroutine obtained from invoking an action from drone.action, such as drone.action.arm()
+        This is a coroutine obtained from invoking an action from drone.action,
+        such as drone.action.arm()
     """
     while True:
         try:
@@ -58,7 +59,9 @@ async def perform_health_checks(drone: DroneCore):
 
 
 async def run_mission(drone: DroneCore, mission: str):
-    mission_data = await drone.mission_raw.import_qgroundcontrol_mission(mission)
+    mission_data = await drone.mission_raw.import_qgroundcontrol_mission(
+        mission
+    )
 
     await drone.mission.set_return_to_launch_after_mission(True)
 

@@ -1,6 +1,8 @@
 import pickle
 import math
 
+from mavsdk.telemetry import Position
+
 
 def obj_to_bytearray(obj: object):
     """
@@ -40,7 +42,7 @@ def bytearray_to_obj(arr: list):
     return pickle.loads(blob)
 
 
-def latlonhei_to_xyz(lat_rad, lon_rad, hei_cm):
+def latlonhei_to_xyz(lat_rad: float, lon_rad: float, hei_cm: float):
     """
     Convert latitude, longitude and height to XYZ coordinates
 
@@ -67,7 +69,7 @@ def latlonhei_to_xyz(lat_rad, lon_rad, hei_cm):
     return x, y, z
 
 
-def distance(pos1, pos2):
+def distance(pos1: Position, pos2: Position):
     """
     Calculates the distance between two points in centimeters
 

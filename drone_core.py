@@ -19,7 +19,11 @@ class DroneCore(System):
     """
     Wraps the ROS2 and MAVSDK functionalities into an abstraction of a UAV
     """
-    def __init__(self, name: str, instance: int, priority: int, logger_path: str):
+    def __init__(
+            self, name: str,
+            instance: int, priority: int,
+            logger_path: str
+        ):
         """
         Inits the attributes, mavsdk_server and ros2 node and publishers
         """
@@ -33,7 +37,10 @@ class DroneCore(System):
         self.instance = instance
 
         self.position = None
-        self.position_publisher = self.create_publisher('/position', ByteMultiArray)
+        self.position_publisher = self.create_publisher(
+            '/position',
+            ByteMultiArray
+        )
 
         self.subscribed = set()
 
@@ -53,7 +60,9 @@ class DroneCore(System):
                 self.logger.info(f"-- Connected to drone!")
                 break
 
-        self.logger.info("Waiting for drone to have a global position estimate...")
+        self.logger.info(
+            "Waiting for drone to have a global position estimate..."
+        )
         async for health in self.telemetry.health():
             if health.is_global_position_ok and health.is_home_position_ok:
                 self.logger.info("-- Global position estimate OK")
@@ -71,7 +80,8 @@ class DroneCore(System):
 
     def create_publisher(self, topic: str, data_type: any):
         """
-        Creates a publisher for some topic, with QoS 1 to allow only the latest info to be transmited
+        Creates a publisher for some topic, with QoS 1 to allow only the latest
+        info to be transmited
 
         Parameters
         ----------
@@ -91,7 +101,12 @@ class DroneCore(System):
         self.position_publisher.publish(msg)
 
 
-    def subscribe_to(self, topic: str, data_type: any, callback: Callable[[any, str, int, any], None], ref: int):
+    def subscribe_to(
+            self,
+            topic: str, data_type: any,
+            callback: Callable[[any, str, int, any], None],
+            ref: int
+        ):
         """
         Subscribes to a topic
 
@@ -102,7 +117,8 @@ class DroneCore(System):
         - data_type: any
             - ROS2 data type to be used at the callback
         - callback: function(drone, topic, ref, msg)
-            - A callback function with the first param being the topic and the second the message of the callback param
+            - A callback function with the first param being the topic and the
+            second the message of the callback param
         - ref: int
             - Instance that it refers to
         """

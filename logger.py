@@ -6,7 +6,8 @@ class Logger(logging.Logger):
     def __init__(self, log_dir: str, sub_dir: str = ""):
         """
         This class is used to output log messages to a out.log and err.log files
-        out.log displays all logs, err.log displays all messages from and above ERROR level
+        out.log displays all logs, err.log displays all messages from and above
+        ERROR level
     
         Parameters
         ----------

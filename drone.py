@@ -100,7 +100,8 @@ async def refresher(drone: DroneCore):
 async def safechecker(drone: DroneCore, total: int):
     while True:
         for i in range(total):
-            # checks if its not itself and if the i drone has already published its position
+            # checks if its not itself and if the i drone has already published
+            # its position
             if i != drone.instance and 'position' in drones[i]:
                 dist = utils.distance(drone.position, drones[i]['position'])
                 if dist <= float(DISTANCE_THRESHOLD_CM):
