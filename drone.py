@@ -143,7 +143,10 @@ async def safechecker(drone: DroneCore, total: int):
         await asyncio.sleep(0.05)
 
 
-async def start_coroutines(drone: DroneCore, total: int, mission_path: str = None):
+async def start_coroutines(
+        drone: DroneCore, total: int,
+        mission_path: str = None
+    ):
     """
     Setup and kickstart all the coroutines of the drone
 
@@ -182,8 +185,12 @@ async def start_coroutines(drone: DroneCore, total: int, mission_path: str = Non
     await group
 
 
-async def execute_core(inst, total, barrier, logger_path, mission):
-    # init the drone data storage
+async def execute_core(
+        inst: int, total: int,
+        barrier: Barrier,
+        logger_path: str, mission: str
+    ):
+    # init the drones data storage
     for i in range(total):
         if i != inst:
             drones.append(dict())
