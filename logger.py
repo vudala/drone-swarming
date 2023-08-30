@@ -3,6 +3,9 @@ import logging
 
 
 class Logger(logging.Logger):
+    """
+    Creates a logger with default settings to be used across the project
+    """
     def __init__(self, log_dir: str, sub_dir: str = ""):
         """
         This class is used to output log messages to a out.log and err.log files
@@ -11,10 +14,10 @@ class Logger(logging.Logger):
     
         Parameters
         ----------
-        log_dir: str
-            Path to be used a root for the logging system
-        sub_dir: str = ""
-            Directory subtree to be created, default is empty    
+        - log_dir: str
+            - Path to be used a root for the logging system
+        - sub_dir: str = ""
+            - Directory subtree to be created, default is empty    
         """
         super().__init__('logger_' + sub_dir, logging.DEBUG)
 

@@ -28,17 +28,6 @@ async def assert_action(action):
         await asyncio.sleep(0.1)
 
 
-async def test_mission(drone: DroneCore, target_altitude: float):
-    drone.logger.info("-- Taking off")
-    
-    # TODO: the drone must be properly ready before you takeoff,
-    # gotta find a way to wait for the commander tell its ok 
-    # through MAVSDK
-    await drone.action.arm()
-    await drone.action.set_takeoff_altitude(target_altitude)
-    await drone.action.takeoff()
-
-
 async def perform_calibration(drone: DroneCore):
     try :
         drone.logger.info("-- Starting gyroscope calibration")
@@ -58,9 +47,22 @@ async def perform_health_checks(drone: DroneCore):
             break
 
 
-async def run_mission(drone: DroneCore, mission: str):
+async def run_mission(drone: DroneCore, mission_path: str = None):
+    """
+    Execute a mission plan described by a .plan file
+
+    Parameters
+    ----------
+    - drone: DroneCore
+        - Drone that will execute the mission
+    - mission_path: str
+        - Path to a .plan file
+    """
+    if mission_path == None:
+        return
+
     mission_data = await drone.mission_raw.import_qgroundcontrol_mission(
-        mission
+        mission_path
     )
 
     await drone.mission.set_return_to_launch_after_mission(True)

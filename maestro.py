@@ -9,10 +9,32 @@ import drone
 
 
 def root_path():
+    """
+    Gets the root path of the file
+
+    Return
+    ------
+    - 
+    """
     return os.path.dirname(os.path.abspath(__file__))
         
 
-def read_missions(logger, path):
+def read_missions(logger: Logger, path: str):
+    """
+    Parse a .json missions file
+
+    Parameters
+    ----------
+    - logger: Logger
+        - Logger object used to log info
+    - path: str
+        - Path to the .json missions file
+
+    Return
+    ------
+    - If there's no configuration file available returns None
+    - Else returns the processed json data
+    """
     if os.path.exists(path):
         logger.info('Reading missions from {}'.format(path))
         f = open(path)
@@ -24,6 +46,7 @@ def read_missions(logger, path):
             f = open(at_root_path)
             return json.load(f)
     
+    logger.warning('No missions file was given')
     return None
 
 
@@ -33,8 +56,8 @@ def main(total_drones: int, missions_path: str):
 
     Parameters
     ----------
-    total_drones: int
-        How many drones to create
+    - total_drones: int
+        - How many drones to create
     """
     log_path = os.path.join(root_path(), 'log')
     log = Logger(log_path)
@@ -82,6 +105,14 @@ def main(total_drones: int, missions_path: str):
 
 
 def get_args():
+    """
+    Process the arguments, displays a help message if arguments were not given
+    correctly
+
+    Return
+    ------
+    - args: Object {drones_n, miss_path}
+    """
     parser = argparse.ArgumentParser(
         prog='python3 maestro.py',
         description='Initiates the drone swarm'

@@ -2,6 +2,7 @@
 # asyncio
 
 import asyncio
+from multiprocessing.synchronize import Barrier
 
 # ros2 module
 import rclpy
@@ -27,8 +28,12 @@ async def create(instance: int, priority: int, logger_path: str):
 
     Parameters
     ----------
-    instance: int
-        Instance number of drone
+    - instance: int
+        - Instance number of drone
+    
+    Return
+    ------
+    - drone: DroneCore
     """
     name = 'drone_' + str(instance)
     drone = DroneCore(name, instance, priority, logger_path)
@@ -69,8 +74,17 @@ def subscribe_position(drone: DroneCore, topic: str, ref: int, msg):
     drones[ref]['position'] = pos
 
 
-# subscribe to the other drones position topic
 def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
+    """
+    Subscribes to the position of the other drones
+
+    Parameters
+    ---------
+    - drone: DroneCore
+        - The drone that will be subscribing
+    - total_instances: int
+        - Total number of drones in the swarm
+    """
     for i in range(total_instances):
         if i != drone.instance:
             drone.subscribe_to(
@@ -86,8 +100,14 @@ def subscribe_to_topics(drone: DroneCore, total_instances: int):
     subscribe_to_drones_positions(drone, total_instances)
 
 
-# execute all the refreshing coroutines
 async def refresher(drone: DroneCore):
+    """
+    Creates and executes all of the refresher coroutines
+
+    Parameters
+    - drone: DroneCore
+        - Target drone of the refreshing tasks
+    """
     position_ref_coro = position_refresher(drone, POSITION_REFRESH_INTERVAL_SEC)
 
     group = asyncio.gather(
@@ -98,6 +118,16 @@ async def refresher(drone: DroneCore):
 
 
 async def safechecker(drone: DroneCore, total: int):
+    """
+    Checks if its too clone to any other drone
+    
+    Paramenters
+    -----------
+    - drone: DroneCore
+        - The drone that will be checking
+    - total: int
+        - Total number of drones in the swarm
+    """
     while True:
         for i in range(total):
             # checks if its not itself and if the i drone has already published
@@ -113,11 +143,18 @@ async def safechecker(drone: DroneCore, total: int):
         await asyncio.sleep(0.05)
 
 
-async def core(drone: DroneCore, total: int, mission_path: str):
-    subscribe_to_topics(drone, total)
+async def start_coroutines(drone: DroneCore, total: int, mission_path: str = None):
+    """
+    Setup and kickstart all the coroutines of the drone
 
-    drone.logger.info('Subscribed to the topics')
-
+    Parameters
+    - drone: DroneCore
+        - Target drone
+    - total: int
+        - Total number of drones in the swarm
+    - mission_path: str
+        - Path to .plan missions file
+    """
     coros = []
 
     await drone.action.set_maximum_speed(1)
@@ -154,20 +191,47 @@ async def execute_core(inst, total, barrier, logger_path, mission):
             drones.append(None)
     
     # defines the priority of the drone, for now is an arbitrary value
-    priority = total - inst - 1
+    priority = inst
 
     dro = await create(inst, priority, logger_path)
     dro.logger.info('Drone successfully created')
+    
     dro.logger.info('Synchronizing with the other UAVs')
     barrier.wait()
+    dro.logger.info('Synchronized')
+
+    dro.logger.info('Subscribing to the other drones topics')
+    subscribe_to_topics(dro, total)
+    dro.logger.info('Subscribed to the topics')
+
     dro.logger.info('All drones synced')
-    dro.logger.info('Starting the drone')
-    await core(dro, total, mission)
+    dro.logger.info('Starting the coroutines')
+    await start_coroutines(dro, total, mission)
 
 
-def execute(inst: int, total: int, barrier, logger_path, mission):
+def execute(
+        inst: int, total: int,
+        barrier: Barrier,
+        logger_path: str, mission_path: str):
+    """
+    Executes all the tasks of a drone
+
+    Parameters
+    ----------
+    - inst: int
+        - Number of the drone's instance
+    - total: int
+        - How many drones are being simulated
+    - barrier: Barrier
+        - A Barrier used to synchronize all the drones, must have the parties
+        number the same as the total param
+    - logger_path: str
+        - Root dir of the logger system
+    - mission_path: str
+        - Path to .plan missions file
+    """
     rclpy.init()
     asyncio.run(
-        execute_core(inst, total, barrier, logger_path, mission)
+        execute_core(inst, total, barrier, logger_path, mission_path)
     )
     rclpy.shutdown()
