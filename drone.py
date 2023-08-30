@@ -95,8 +95,15 @@ def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
             )
 
 
-# subscribe to all the topics
 def subscribe_to_topics(drone: DroneCore, total_instances: int):
+    """
+    Run all of the subscription routines
+
+    - drone: DroneCore
+        - Target drone
+    - total_instances: int
+        - Total drones in the swarm
+    """
     subscribe_to_drones_positions(drone, total_instances)
 
 
