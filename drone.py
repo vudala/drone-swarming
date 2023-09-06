@@ -143,7 +143,7 @@ async def fixedw_refresher(drone: DroneCore):
 async def battery_logger(drone: DroneCore):
     drone.setup_battery()
     while True:
-        batt = await drone.remaining_battery_pct()
+        batt = await drone.update_battery()
         drone.logger.info(batt)
         await asyncio.sleep(0.5)
 
