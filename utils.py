@@ -4,8 +4,6 @@ import time
 
 from mavsdk.telemetry import Position, VelocityNed
 
-from drone import DroneCore
-
 
 # Assumptions and parameters initialization for battery
 P_PIXHAWK = 2.2  # Power consumption of the Pixhawk in watts
@@ -137,7 +135,7 @@ def ground_speed_ms(vel: VelocityNed):
     )
 
 
-def remaining_battery(drone: DroneCore):
+def remaining_battery(drone):
     """
     Calculates the remaing battery percentage of the drone, return None if 
     the data necessary to do it is not available yet
