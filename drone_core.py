@@ -192,7 +192,7 @@ class DroneCore(System):
         self.energy_accumulated = 0
 
  
-    async def remaining_battery_pct(self):
+    async def update_battery(self):
         def instantaneous_power(T, gs, cr):
             P_T = K_T * T
             P_GS = K_GS * gs
@@ -221,4 +221,5 @@ class DroneCore(System):
 
         self.logger.info('T: {} cr: {} gs: {} delta_t: {} E_interval: {}'.format(T, cr, gs, delta_t, E_interval))
 
+        self.battery = battery
         return battery
