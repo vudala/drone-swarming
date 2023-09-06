@@ -1,7 +1,22 @@
 import pickle
 import math
+import time
 
 from mavsdk.telemetry import Position, VelocityNed
+
+from drone import DroneCore
+
+
+# Assumptions and parameters initialization for battery
+P_PIXHAWK = 2.2  # Power consumption of the Pixhawk in watts
+C_BATTERY = 22.0   # Battery capacity in Ah
+V_BATTETY_FULL = 25.2  # Fully charged voltage of a 6S LiPo battery in volts
+E_BATTERY = C_BATTERY * V_BATTETY_FULL  # Total energy of the battery in Wh
+
+# Coefficients Initialization fro battery
+K_T = 1.5  # Throttle coefficient in W/%
+K_GS = 3.33  # Ground speed coefficient in W/(m/s)
+K_CR = 15.0  # Climb rate coefficient in W/(m/s)
 
 
 def obj_to_bytearray(obj: object):
@@ -120,3 +135,46 @@ def ground_speed_ms(vel: VelocityNed):
     return math.sqrt(
         math.pow(vel.north_m_s, 2.0) + math.pow(vel.east_m_s, 2.0)
     )
+
+
+def remaining_battery(drone: DroneCore):
+    """
+    Calculates the remaing battery percentage of the drone, return None if 
+    the data necessary to do it is not available yet
+
+    Parameters
+    ----------
+    - drone: DroneCore
+        - Target drone
+    
+    Return
+    ------
+    - battery_pct: float | None
+    """
+    def instantaneous_power(T, gs, cr):
+        P_T = K_T * T
+        P_GS = K_GS * gs
+        P_CR = K_CR * cr
+        P_instant = P_PIXHAWK + P_T + P_GS + P_CR
+        return P_instant
+    
+    gs = drone.ground_speed_ms
+    T = drone.throttle_pct
+    cr = drone.climb_rate_ms
+
+    if gs == None or T == None or cr == None:
+        return None
+
+    P_instant = instantaneous_power(T, gs, cr)
+
+    t = time.time()
+    delta_t = (t - drone.prev_time) / 3600
+    drone.prev_time = t
+
+    E_interval = P_instant * delta_t
+    drone.energy_accumulated += E_interval
+
+    E_remaining = E_BATTERY - drone.energy_accumulated
+    battery = (E_remaining / E_BATTERY)
+
+    return float(battery)

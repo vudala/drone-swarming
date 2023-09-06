@@ -16,17 +16,6 @@ import time
 
 MAVSDK_SERVER_DEFAULT_PORT = 50051
 
-# Assumptions and Parameters Initialization
-P_PIXHAWK = 2.2  # Power consumption of the Pixhawk in watts
-C_BATTERY = 22.0   # Battery capacity in Ah
-V_BATTETY_FULL = 25.2  # Fully charged voltage of a 6S LiPo battery in volts
-E_BATTERY = C_BATTERY * V_BATTETY_FULL  # Total energy of the battery in Wh
-
-# Coefficients Initialization
-K_T = 1.5  # Throttle coefficient in W/%
-K_GS = 3.33  # Ground speed coefficient in W/(m/s)
-K_CR = 15.0  # Climb rate coefficient in W/(m/s)
-
 
 class DroneCore(System):
     """
@@ -193,33 +182,5 @@ class DroneCore(System):
 
  
     async def update_battery(self):
-        def instantaneous_power(T, gs, cr):
-            P_T = K_T * T
-            P_GS = K_GS * gs
-            P_CR = K_CR * cr
-            P_instant = P_PIXHAWK + P_T + P_GS + P_CR
-            return P_instant
-        
-        gs = self.ground_speed_ms
-        T = self.throttle_pct
-        cr = self.climb_rate_ms
-
-        if gs == None or T == None or cr == None:
-            return None
-
-        P_instant = instantaneous_power(T, gs, cr)
-
-        t = time.time()
-        delta_t = (t - self.prev_time) / 3600
-        self.prev_time = t
-
-        E_interval = P_instant * delta_t
-        self.energy_accumulated += E_interval
-
-        E_remaining = E_BATTERY - self.energy_accumulated
-        battery = (E_remaining / E_BATTERY)
-
-        self.logger.info('T: {} cr: {} gs: {} delta_t: {} E_interval: {}'.format(T, cr, gs, delta_t, E_interval))
-
-        self.battery = battery
-        return float(battery)
+        self.battery = utils.remaining_battery(self)
+        return self.battery
