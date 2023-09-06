@@ -205,7 +205,7 @@ class DroneCore(System):
         cr = self.climb_rate_ms
 
         if gs == None or T == None or cr == None:
-            return 1.0
+            return None
 
         P_instant = instantaneous_power(T, gs, cr)
 
