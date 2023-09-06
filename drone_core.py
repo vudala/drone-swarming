@@ -38,7 +38,7 @@ class DroneCore(System):
             logger_path: str
         ):
         """
-        Inits the attributes, mavsdk_server and ros2 node and publishers
+        Inits the attributes, mavsdk_server, ros2 node and publishers
         """
         super().__init__(port=(MAVSDK_SERVER_DEFAULT_PORT + instance))
 
@@ -222,4 +222,4 @@ class DroneCore(System):
         self.logger.info('T: {} cr: {} gs: {} delta_t: {} E_interval: {}'.format(T, cr, gs, delta_t, E_interval))
 
         self.battery = battery
-        return battery
+        return float(battery)
