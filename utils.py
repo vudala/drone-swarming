@@ -1,7 +1,7 @@
 import pickle
 import math
 
-from mavsdk.telemetry import Position
+from mavsdk.telemetry import Position, VelocityNed
 
 
 def obj_to_bytearray(obj: object):
@@ -69,7 +69,7 @@ def latlonhei_to_xyz(lat_rad: float, lon_rad: float, hei_cm: float):
     return x, y, z
 
 
-def distance(pos1: Position, pos2: Position):
+def distance_cm(pos1: Position, pos2: Position):
     """
     Calculates the distance between two points in centimeters
 
@@ -102,3 +102,21 @@ def distance(pos1: Position, pos2: Position):
     )
 
     return d
+
+
+def ground_speed_ms(vel: VelocityNed):
+    """
+    Returns the ground speed in m/s using the NED velocity of the drone
+
+    Parameters
+    ----------
+    - vel: VelocityNED
+        - NED velocity of the drone
+    
+    Return
+    ------
+    - gnd_speed: float
+    """
+    return math.sqrt(
+        math.pow(vel.north_m_s, 2.0) + math.pow(vel.east_m_s, 2.0)
+    )

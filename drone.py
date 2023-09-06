@@ -18,6 +18,10 @@ import mission
 PX4_SITL_DEFAULT_PORT = 14540 
 
 POSITION_REFRESH_INTERVAL_SEC = 0.1
+VELOCITY_REFRESH_INTERVAL_SEC = 0.5
+GND_SPEED_REFRESH_INTERVAL_SEC = 0.5
+FIXEDW_REFRESH_INTERVAL_SEC = 0.5
+
 DISTANCE_THRESHOLD_CM = 250
 
 drones = []
@@ -49,23 +53,6 @@ async def create(instance: int, priority: int, logger_path: str):
     return drone
 
 
-async def position_refresher(drone: DroneCore, interval: float):
-    """
-    Keeps updating and publishing the drone position
-
-    Parameters
-    ----------
-    - drone: DroneCore
-        - Target drone
-    - interval: float
-        - How much time to wait between iterations (seconds)
-    """
-    while True:
-        await drone.update_position()
-        drone.publish_position()
-        await asyncio.sleep(interval)
-
-
 # callback function of the position subscription
 def subscribe_position(drone: DroneCore, topic: str, ref: int, msg):
     data = msg.data
@@ -74,9 +61,9 @@ def subscribe_position(drone: DroneCore, topic: str, ref: int, msg):
     drones[ref]['position'] = pos
 
 
-def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
+def subscribe_to_topics(drone: DroneCore, total_instances: int):
     """
-    Subscribes to the position of the other drones
+    Subscribes to the topics of the other drones
 
     Parameters
     ---------
@@ -87,6 +74,7 @@ def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
     """
     for i in range(total_instances):
         if i != drone.instance:
+            # Position
             drone.subscribe_to(
                 'drone_{}/position'.format(i),
                 ByteMultiArray,
@@ -95,16 +83,69 @@ def subscribe_to_drones_positions(drone: DroneCore, total_instances: int):
             )
 
 
-def subscribe_to_topics(drone: DroneCore, total_instances: int):
+async def position_refresher(drone: DroneCore):
     """
-    Run all of the subscription routines
+    Keeps updating and publishing the drone position
 
+    Parameters
+    ----------
     - drone: DroneCore
         - Target drone
-    - total_instances: int
-        - Total drones in the swarm
     """
-    subscribe_to_drones_positions(drone, total_instances)
+    while True:
+        await drone.update_position()
+        drone.publish_position()
+        await asyncio.sleep(POSITION_REFRESH_INTERVAL_SEC)
+
+
+async def velocity_refresher(drone: DroneCore):
+    """
+    Keeps updating the drones velocity
+
+    Parameters
+    ----------
+    - drone: DroneCore
+        - Target drone
+    """
+    while True:
+        await drone.update_velocity_ned()
+        await asyncio.sleep(VELOCITY_REFRESH_INTERVAL_SEC)
+
+
+async def gnd_speed_refresher(drone: DroneCore):
+    """
+    Keeps updating the drones ground speed
+
+    Parameters
+    ----------
+    - drone: DroneCore
+        - Target drone
+    """
+    while True:
+        await drone.update_gnd_speed_ms()
+        await asyncio.sleep(GND_SPEED_REFRESH_INTERVAL_SEC)
+
+
+async def fixedw_refresher(drone: DroneCore):
+    """
+    Keeps updating the drones climb rate and throttle
+
+    Parameters
+    ----------
+    - drone: DroneCore
+        - Target drone
+    """
+    while True:
+        await drone.update_fixedwing_metrics()
+        await asyncio.sleep(FIXEDW_REFRESH_INTERVAL_SEC)
+
+
+async def battery_logger(drone: DroneCore):
+    drone.setup_battery()
+    while True:
+        batt = await drone.remaining_battery_pct()
+        drone.logger.info(batt)
+        await asyncio.sleep(0.5)
 
 
 async def refresher(drone: DroneCore):
@@ -115,10 +156,18 @@ async def refresher(drone: DroneCore):
     - drone: DroneCore
         - Target drone of the refreshing tasks
     """
-    position_ref_coro = position_refresher(drone, POSITION_REFRESH_INTERVAL_SEC)
+    position_ref_coro = position_refresher(drone)
+    velocity_ref_coro = velocity_refresher(drone)
+    gnd_speed_ref_coro = gnd_speed_refresher(drone)
+    fixedw_ref_coro = fixedw_refresher(drone)
+    battery_logger_coro = battery_logger(drone)
 
     group = asyncio.gather(
-        position_ref_coro
+        position_ref_coro,
+        velocity_ref_coro,
+        gnd_speed_ref_coro,
+        fixedw_ref_coro,
+        battery_logger_coro,
     )
 
     await group
@@ -140,7 +189,7 @@ async def safechecker(drone: DroneCore, total: int):
             # checks if its not itself and if the i drone has already published
             # its position
             if i != drone.instance and 'position' in drones[i]:
-                dist = utils.distance(drone.position, drones[i]['position'])
+                dist = utils.distance_cm(drone.position, drones[i]['position'])
                 if dist <= float(DISTANCE_THRESHOLD_CM):
                     # do something
                     # stall and wait for the path to be clear
@@ -166,8 +215,6 @@ async def start_coroutines(
         - Path to .plan missions file
     """
     coros = []
-
-    await drone.action.set_maximum_speed(1)
 
     # ros2 spin on separate thread
     # TODO: this coroutine is causing thread errors

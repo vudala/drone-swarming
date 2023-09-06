@@ -11,8 +11,21 @@ import utils
 
 from logger import Logger
 
+import time
+
 
 MAVSDK_SERVER_DEFAULT_PORT = 50051
+
+# Assumptions and Parameters Initialization
+P_PIXHAWK = 2.2  # Power consumption of the Pixhawk in watts
+C_BATTERY = 22.0   # Battery capacity in Ah
+V_BATTETY_FULL = 25.2  # Fully charged voltage of a 6S LiPo battery in volts
+E_BATTERY = C_BATTERY * V_BATTETY_FULL  # Total energy of the battery in Wh
+
+# Coefficients Initialization
+K_T = 1.5  # Throttle coefficient in W/%
+K_GS = 3.33  # Ground speed coefficient in W/(m/s)
+K_CR = 15.0  # Climb rate coefficient in W/(m/s)
 
 
 class DroneCore(System):
@@ -49,7 +62,18 @@ class DroneCore(System):
             'drone_{}'.format(instance)
         )
 
-    
+        self.velocity_ned = None
+        self.ground_speed_ms = None
+
+        self.throttle_pct = None
+        self.climb_rate_ms = None
+
+        self.prev_time = None
+        self.energy_accumulated = None
+
+        self.battery = None
+
+
     async def stabilize(self):
         """
         Wait for the sensors to stabilize
@@ -67,15 +91,6 @@ class DroneCore(System):
             if health.is_global_position_ok and health.is_home_position_ok:
                 self.logger.info("-- Global position estimate OK")
                 break
-
-
-    async def update_position(self):
-        """
-        Update its own position
-        """
-        async for pos in self.telemetry.position():
-            self.position = pos
-            return
         
 
     def create_publisher(self, topic: str, data_type: any):
@@ -129,3 +144,81 @@ class DroneCore(System):
             1
         )
         self.subscribed.add(sub)
+
+
+    async def update_position(self):
+        """
+        Update its own position
+        """
+        async for pos in self.telemetry.position():
+            self.position = pos
+            return pos
+
+
+    async def update_velocity_ned(self):
+        """
+        Update its own velocity
+        """
+        async for v in self.telemetry.velocity_ned():
+            self.velocity_ned = v
+            return v
+
+
+    async def update_gnd_speed_ms(self):
+        """
+        Get the vehicle current ground speed in ms
+
+        Return
+        ------
+        - gs: float
+        """
+        vel = self.velocity_ned
+        if vel == None:
+            return None
+        
+        self.ground_speed_ms = utils.ground_speed_ms(vel)
+        return self.ground_speed_ms
+
+
+    async def update_fixedwing_metrics(self):
+        async for met in self.telemetry.fixedwing_metrics():
+            self.throttle_pct = met.throttle_percentage
+            self.climb_rate_ms = met.climb_rate_m_s
+            return self.throttle_pct, self.climb_rate_ms
+
+
+    def setup_battery(self):
+        self.prev_time = time.time()
+        self.energy_accumulated = 0
+
+ 
+    async def remaining_battery_pct(self):
+        def instantaneous_power(T, gs, cr):
+            P_T = K_T * T
+            P_GS = K_GS * gs
+            P_CR = K_CR * cr
+            P_instant = P_PIXHAWK + P_T + P_GS + P_CR
+            return P_instant
+        
+        gs = self.ground_speed_ms
+        T = self.throttle_pct
+        cr = self.climb_rate_ms
+
+        if gs == None or T == None or cr == None:
+            return 1.0
+
+        P_instant = instantaneous_power(T, gs, cr)
+
+        t = time.time()
+        delta_t = (t - self.prev_time) / 3600
+        self.prev_time = t
+
+        E_interval = P_instant * delta_t
+        self.energy_accumulated += E_interval
+
+        E_remaining = E_BATTERY - self.energy_accumulated
+        battery = (E_remaining / E_BATTERY)
+
+        self.logger.info('T: {} cr: {} gs: {} delta_t: {} E_interval: {}'.format(T, cr, gs, delta_t, E_interval))
+
+        return battery
