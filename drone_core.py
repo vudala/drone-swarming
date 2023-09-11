@@ -5,7 +5,7 @@ from std_msgs.msg import ByteMultiArray, ByteMultiArray
 
 from functools import partial
 
-from collections.abc import Callable
+from typing import Callable
 
 import utils
 
