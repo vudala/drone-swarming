@@ -5,7 +5,8 @@ Implementing a drone swarm on PX4/AirSim simulation
 You will need all these libraries:
 
 - Python client for ROS2:
-  - Install: https://github.com/ros2/rclpy
+  - Follow the standard process of instalation and setup for ROS2
+  https://docs.ros.org/
 
 - asyncio
   - Install: pip install asyncio
@@ -15,11 +16,11 @@ You will need all these libraries:
 
 The requirements needs better documentation
 
-If you run
+Or you can run
 ```bash
 pip install -r requirements.txt
 ```
-it should be enough, but might be no so need to investigate.
+to install mavsdk and asyncio
 
 ### Usage
 To summon NUMBER_OF_DRONES drones just run the following:
