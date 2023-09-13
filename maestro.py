@@ -1,3 +1,5 @@
+#!/usr/bin/python3.10
+
 import os
 import argparse
 import json
