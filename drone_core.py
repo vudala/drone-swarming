@@ -60,6 +60,8 @@ class DroneCore(System):
         self.prev_time = None
         self.energy_accumulated = None
 
+        self.odometry = None
+
         self.battery = None
 
 
@@ -184,3 +186,9 @@ class DroneCore(System):
     async def update_battery(self):
         self.battery = utils.remaining_battery(self)
         return self.battery
+    
+
+    async def update_odometry(self):
+        async for od in self.telemetry.odometry():
+            self.odometry = od
+            return od

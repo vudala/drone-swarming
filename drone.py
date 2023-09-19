@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-# asyncio
-
 import asyncio
+import airsim
 from multiprocessing.synchronize import Barrier
 
 # ros2 module
@@ -18,11 +16,12 @@ import mission
 PX4_SITL_DEFAULT_PORT = 14540 
 
 POSITION_REFRESH_INTERVAL_SEC = 0.1
-VELOCITY_REFRESH_INTERVAL_SEC = 0.5
-GND_SPEED_REFRESH_INTERVAL_SEC = 0.5
-FIXEDW_REFRESH_INTERVAL_SEC = 0.5
+VELOCITY_REFRESH_INTERVAL_SEC = 0.1
+GND_SPEED_REFRESH_INTERVAL_SEC = 0.1
+FIXEDW_REFRESH_INTERVAL_SEC = 0.1
+ODOMETRY_REFRESH_INTERVAL_SEC = 0.01
 
-DISTANCE_THRESHOLD_CM = 250
+DISTANCE_THRESHOLD_CM = 200
 
 drones = []
 
@@ -140,11 +139,62 @@ async def fixedw_refresher(drone: DroneCore):
         await asyncio.sleep(FIXEDW_REFRESH_INTERVAL_SEC)
 
 
+async def odometry_refresher(drone: DroneCore):
+    """
+    Keeps updating the odometry data
+
+    Parameters
+    ----------
+    - drone: DroneCore
+        - Target drone
+    """
+    while True:
+        await drone.update_odometry()
+        await asyncio.sleep(ODOMETRY_REFRESH_INTERVAL_SEC)
+
+
 async def battery_logger(drone: DroneCore):
     drone.setup_battery()
     while True:
         batt = await drone.update_battery()
         await asyncio.sleep(0.5)
+
+
+async def airsim_pos_updater(drone: DroneCore):
+    """
+    Connects to AirSim API and starts to set the position of the corresponding
+    aircraft according to the PX4 SITL provided position and orientation
+
+    The vehicle name must be the same for AirSim and maestro
+    """
+    client = airsim.MultirotorClient()
+    client.confirmConnection()
+    while True:
+        odo = drone.odometry
+        if odo != None:
+            pos = odo.position_body
+            quat = odo.q
+
+            pose = {
+                'orientation': {
+                    'w_val': quat.w,
+                    'x_val': quat.x,
+                    'y_val': quat.y,
+                    'z_val': quat.z,
+                },
+                'position': {   
+                    'x_val': pos.x_m, 
+                    'y_val': pos.y_m,  
+                    'z_val': pos.z_m
+                }
+            }
+
+            client.simSetVehiclePose(
+                pose,
+                ignore_collision=True,
+                vehicle_name=drone.name
+            )
+        await asyncio.sleep(0.01)
 
 
 async def refresher(drone: DroneCore):
@@ -159,14 +209,14 @@ async def refresher(drone: DroneCore):
     velocity_ref_coro = velocity_refresher(drone)
     gnd_speed_ref_coro = gnd_speed_refresher(drone)
     fixedw_ref_coro = fixedw_refresher(drone)
-    battery_logger_coro = battery_logger(drone)
+    odometry_ref_coro = odometry_refresher(drone)
 
     group = asyncio.gather(
         position_ref_coro,
         velocity_ref_coro,
         gnd_speed_ref_coro,
         fixedw_ref_coro,
-        battery_logger_coro,
+        odometry_ref_coro,
     )
 
     await group
@@ -227,21 +277,22 @@ async def start_coroutines(
     if mission_path != None:
         coros.append(mission.run_mission(drone, mission_path)) 
 
-    coros.append(safechecker(drone, total)) 
+    coros.append(safechecker(drone, total))
+
+    coros.append(airsim_pos_updater(drone)) 
 
     # create tasks for all coroutines
     group = asyncio.gather(*coros)
 
     drone.logger.info('Running all coroutines')
 
-    # keeps waiting for them to finish (which is never)
     await group
 
 
 async def execute_core(
         inst: int, total: int,
         barrier: Barrier,
-        logger_path: str, mission: str
+        logger_path: str, mission: str, airsim: bool
     ):
     # init the drones data storage
     for i in range(total):
@@ -266,13 +317,13 @@ async def execute_core(
 
     dro.logger.info('All drones synced')
     dro.logger.info('Starting the coroutines')
-    await start_coroutines(dro, total, mission)
+    await start_coroutines(dro, total, mission, airsim)
 
 
 def execute(
         inst: int, total: int,
         barrier: Barrier,
-        logger_path: str, mission_path: str):
+        logger_path: str, mission_path: str, airsim_g: bool):
     """
     Executes all the tasks of a drone
 
@@ -292,6 +343,13 @@ def execute(
     """
     rclpy.init()
     asyncio.run(
-        execute_core(inst, total, barrier, logger_path, mission_path)
+        execute_core(
+            inst,
+            total,
+            barrier,
+            logger_path,
+            mission_path,
+            airsim_g
+        )
     )
     rclpy.shutdown()

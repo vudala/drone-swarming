@@ -50,7 +50,7 @@ def read_missions(logger: Logger, path: str):
     return None
 
 
-def main(total_drones: int, missions_path: str):
+def main(total_drones: int, missions_path: str, airsim_g: bool):
     """
     Creates multiple drones and syncs them
 
@@ -86,7 +86,8 @@ def main(total_drones: int, missions_path: str):
                 total_drones,
                 barrier,
                 log_path,
-                m_path
+                m_path,
+                airsim_g
             ],
             name='maestro_drone_' + str(inst)
         )
@@ -131,9 +132,15 @@ def get_args():
         help='path for .json missions file'
     )
 
+    parser.add_argument(
+        '-a', '--airsim-external', dest='airsim_g',
+        action='store_true',
+        help='enable external graphic engine update for AirSim'
+    )
+
     return parser.parse_args()
 
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.drones_n, args.miss_path)
+    main(args.drones_n, args.miss_path, args.airsim_g)
