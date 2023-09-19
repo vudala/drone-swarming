@@ -25,12 +25,14 @@ DISTANCE_THRESHOLD_CM = 200
 
 drones = []
 
-async def create(instance: int, priority: int, logger_path: str):
+async def create(name: str, instance: int, priority: int, logger_path: str):
     """
     Creates a drone and expects its health checks for GPS and that kind of stuff
 
     Parameters
     ----------
+    - name: str
+        - Name of the drone
     - instance: int
         - Instance number of drone
     
@@ -38,7 +40,6 @@ async def create(instance: int, priority: int, logger_path: str):
     ------
     - drone: DroneCore
     """
-    name = 'drone_' + str(instance)
     drone = DroneCore(name, instance, priority, logger_path)
 
     sys_addr = 'udp://:' + str(PX4_SITL_DEFAULT_PORT + instance)
@@ -250,7 +251,8 @@ async def safechecker(drone: DroneCore, total: int):
 
 async def start_coroutines(
         drone: DroneCore, total: int,
-        mission_path: str = None
+        mission_path: str = None,
+        airsim_e: bool = False
     ):
     """
     Setup and kickstart all the coroutines of the drone
@@ -279,7 +281,8 @@ async def start_coroutines(
 
     coros.append(safechecker(drone, total))
 
-    coros.append(airsim_pos_updater(drone)) 
+    if airsim_e:
+        coros.append(airsim_pos_updater(drone)) 
 
     # create tasks for all coroutines
     group = asyncio.gather(*coros)
@@ -290,10 +293,13 @@ async def start_coroutines(
 
 
 async def execute_core(
-        inst: int, total: int,
+        name: str, inst: int, total: int,
         barrier: Barrier,
         logger_path: str, mission: str, airsim: bool
     ):
+    """
+    Wraps the functionalities
+    """
     # init the drones data storage
     for i in range(total):
         if i != inst:
@@ -304,7 +310,7 @@ async def execute_core(
     # defines the priority of the drone, for now is an arbitrary value
     priority = inst
 
-    dro = await create(inst, priority, logger_path)
+    dro = await create(name, inst, priority, logger_path)
     dro.logger.info('Drone successfully created')
     
     dro.logger.info('Synchronizing with the other UAVs')
@@ -321,14 +327,16 @@ async def execute_core(
 
 
 def execute(
-        inst: int, total: int,
+        name: str, inst: int, total: int,
         barrier: Barrier,
-        logger_path: str, mission_path: str, airsim_g: bool):
+        logger_path: str, mission_path: str, airsim_e: bool):
     """
     Executes all the tasks of a drone
 
     Parameters
     ----------
+    - name: str
+        - Name of the drone
     - inst: int
         - Number of the drone's instance
     - total: int
@@ -344,12 +352,13 @@ def execute(
     rclpy.init()
     asyncio.run(
         execute_core(
+            name,
             inst,
             total,
             barrier,
             logger_path,
             mission_path,
-            airsim_g
+            airsim_e
         )
     )
     rclpy.shutdown()

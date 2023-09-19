@@ -17,40 +17,23 @@ def root_path():
     - 
     """
     return os.path.dirname(os.path.abspath(__file__))
-        
 
-def read_missions(logger: Logger, path: str):
-    """
-    Parse a .json missions file
 
-    Parameters
-    ----------
-    - logger: Logger
-        - Logger object used to log info
-    - path: str
-        - Path to the .json missions file
-
-    Return
-    ------
-    - If there's no configuration file available returns None
-    - Else returns the processed json data
-    """
+def read_config(logger: Logger, path: str):
     if os.path.exists(path):
-        logger.info('Reading missions from {}'.format(path))
+        logger.info('Reading drones from {}'.format(path))
         f = open(path)
         return json.load(f)
     else:
-        at_root_path = os.path.join(root_path(), 'missions.json')
+        at_root_path = os.path.join(root_path(), 'config.json')
         if os.path.exists(at_root_path):
-            logger.info('Reading missions from {}'.format(at_root_path))
+            logger.info('Reading drones from {}'.format(at_root_path))
             f = open(at_root_path)
             return json.load(f)
-    
-    logger.warning('No missions file was given')
-    return None
+    return []
 
 
-def main(total_drones: int, missions_path: str, airsim_g: bool):
+def main(fpath: str, airsim_g: bool):
     """
     Creates multiple drones and syncs them
 
@@ -65,16 +48,16 @@ def main(total_drones: int, missions_path: str, airsim_g: bool):
     log.info('Maestro initialized')
     log.info('Creating the drones')
 
+    drones_config = read_config(log, fpath)
+
+    total_drones = len(drones_config)
     barrier = Barrier(parties=total_drones)
 
-    m_data = read_missions(log, missions_path)
-
     procs = []
-    for inst in range(total_drones):
-        m_path = None
-
-        if m_data:
-            m_path = m_data.get(f'drone_{str(inst)}', None)
+    
+    inst = 0
+    for d_name in drones_config:
+        m_path = drones_config[d_name].get('mission_path', None)
 
         if m_path == None:
             log.info(f'No mission for Drone {str(inst)}')
@@ -82,6 +65,7 @@ def main(total_drones: int, missions_path: str, airsim_g: bool):
         p = Process(
             target=drone.execute,
             args=[
+                d_name,
                 inst,
                 total_drones,
                 barrier,
@@ -95,6 +79,8 @@ def main(total_drones: int, missions_path: str, airsim_g: bool):
         procs.append(p)
 
         log.info('Drone {} created'.format(inst))
+
+        inst += 1
     
     log.info('All drones were created')
     log.info('Waiting for the drones to finish execution') 
@@ -120,20 +106,14 @@ def get_args():
     )
 
     parser.add_argument(
-        'drones_n', metavar='drones_n',
-        type=int,
-        help='number of drone instances'
-    )
-
-    parser.add_argument(
-        '--missions', dest='miss_path',
+        '-c', '--config', dest='conf_path',
         metavar='filepath', type=str,
-        default='missions.json',
-        help='path for .json missions file'
+        default='config.json',
+        help='path for .json config file'
     )
 
     parser.add_argument(
-        '-a', '--airsim-external', dest='airsim_g',
+        '-a', '--airsim-external', dest='airsim_e',
         action='store_true',
         help='enable external graphic engine update for AirSim'
     )
@@ -143,4 +123,4 @@ def get_args():
 
 if __name__ == '__main__':
     args = get_args()
-    main(args.drones_n, args.miss_path, args.airsim_g)
+    main(args.conf_path, args.airsim_e)
