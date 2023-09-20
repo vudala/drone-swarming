@@ -1,16 +1,16 @@
-import asyncio
-import airsim
+# standard
 from multiprocessing.synchronize import Barrier
 
-# ros2 module
+# 3rd party
+import asyncio
 import rclpy
+import airsim
 from std_msgs.msg import ByteMultiArray
 
-# my modules
+# self
 import utils
 from drone_core import DroneCore
 import mission
-
 
 
 PX4_SITL_DEFAULT_PORT = 14540

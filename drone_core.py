@@ -1,4 +1,4 @@
-# sys
+# standard
 import time
 from functools import partial
 from typing import Callable
@@ -39,17 +39,17 @@ class DroneCore(System):
         self.ros2_node = Node(self.node_name)
         self.instance = instance
 
-        self.position = None
-        self.position_publisher = self.create_publisher(
-            '/position',
-            ByteMultiArray
-        )
-
         self.subscribed = set()
 
         self.logger = Logger(
             logger_path,
             'drone_{}'.format(instance)
+        )
+
+        self.position = None
+        self.position_publisher = self.create_publisher(
+            '/position',
+            ByteMultiArray
         )
 
         self.velocity_ned = None
@@ -58,11 +58,10 @@ class DroneCore(System):
         self.throttle_pct = None
         self.climb_rate_ms = None
 
-        self.prev_time = None
-        self.energy_accumulated = None
-
         self.odometry = None
 
+        self.prev_time = None
+        self.energy_accumulated = None
         self.battery = None
 
 

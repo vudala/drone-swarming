@@ -1,9 +1,10 @@
+# 3rd party
 from mavsdk.action import ActionError
-from drone_core import DroneCore
-
 import asyncio
-
 from mavsdk.calibration import CalibrationError
+
+# self
+from drone_core import DroneCore
 
 
 # this need to be reformulated, it has problems with it
