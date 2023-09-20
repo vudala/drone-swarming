@@ -13,13 +13,14 @@ import mission
 
 
 
-PX4_SITL_DEFAULT_PORT = 14540 
+PX4_SITL_DEFAULT_PORT = 14540
 
-POSITION_REFRESH_INTERVAL_SEC = 0.1
-VELOCITY_REFRESH_INTERVAL_SEC = 0.1
-GND_SPEED_REFRESH_INTERVAL_SEC = 0.1
-FIXEDW_REFRESH_INTERVAL_SEC = 0.1
-ODOMETRY_REFRESH_INTERVAL_SEC = 0.01
+# delay in seconds
+POSITION_REFRESH_DELAY = 0.1
+VELOCITY_REFRESH_DELAY = 0.1
+GND_SPEED_REFRESH_DELAY = 0.1
+THRT_CRATE_REFRESH_DELAY = 0.1
+ODOMETRY_REFRESH_DELAY = 0.1
 
 DISTANCE_THRESHOLD_CM = 200
 
@@ -57,7 +58,7 @@ async def create(name: str, instance: int, priority: int, logger_path: str):
 def subscribe_position(drone: DroneCore, topic: str, ref: int, msg):
     data = msg.data
     pos = utils.bytearray_to_obj(data)
-
+    
     drones[ref]['position'] = pos
 
 
@@ -81,84 +82,6 @@ def subscribe_to_topics(drone: DroneCore, total_instances: int):
                 subscribe_position,
                 i
             )
-
-
-async def position_refresher(drone: DroneCore):
-    """
-    Keeps updating and publishing the drone position
-
-    Parameters
-    ----------
-    - drone: DroneCore
-        - Target drone
-    """
-    while True:
-        await drone.update_position()
-        drone.publish_position()
-        await asyncio.sleep(POSITION_REFRESH_INTERVAL_SEC)
-
-
-async def velocity_refresher(drone: DroneCore):
-    """
-    Keeps updating the drones velocity
-
-    Parameters
-    ----------
-    - drone: DroneCore
-        - Target drone
-    """
-    while True:
-        await drone.update_velocity_ned()
-        await asyncio.sleep(VELOCITY_REFRESH_INTERVAL_SEC)
-
-
-async def gnd_speed_refresher(drone: DroneCore):
-    """
-    Keeps updating the drones ground speed
-
-    Parameters
-    ----------
-    - drone: DroneCore
-        - Target drone
-    """
-    while True:
-        await drone.update_gnd_speed_ms()
-        await asyncio.sleep(GND_SPEED_REFRESH_INTERVAL_SEC)
-
-
-async def fixedw_refresher(drone: DroneCore):
-    """
-    Keeps updating the drones climb rate and throttle
-
-    Parameters
-    ----------
-    - drone: DroneCore
-        - Target drone
-    """
-    while True:
-        await drone.update_fixedwing_metrics()
-        await asyncio.sleep(FIXEDW_REFRESH_INTERVAL_SEC)
-
-
-async def odometry_refresher(drone: DroneCore):
-    """
-    Keeps updating the odometry data
-
-    Parameters
-    ----------
-    - drone: DroneCore
-        - Target drone
-    """
-    while True:
-        await drone.update_odometry()
-        await asyncio.sleep(ODOMETRY_REFRESH_INTERVAL_SEC)
-
-
-async def battery_logger(drone: DroneCore):
-    drone.setup_battery()
-    while True:
-        batt = await drone.update_battery()
-        await asyncio.sleep(0.5)
 
 
 async def airsim_pos_updater(drone: DroneCore):
@@ -206,11 +129,11 @@ async def refresher(drone: DroneCore):
     - drone: DroneCore
         - Target drone of the refreshing tasks
     """
-    position_ref_coro = position_refresher(drone)
-    velocity_ref_coro = velocity_refresher(drone)
-    gnd_speed_ref_coro = gnd_speed_refresher(drone)
-    fixedw_ref_coro = fixedw_refresher(drone)
-    odometry_ref_coro = odometry_refresher(drone)
+    position_ref_coro = drone.position_refresher(POSITION_REFRESH_DELAY)
+    velocity_ref_coro = drone.velocity_refresher(VELOCITY_REFRESH_DELAY)
+    gnd_speed_ref_coro = drone.gnd_speed_refresher(GND_SPEED_REFRESH_DELAY)
+    fixedw_ref_coro = drone.thrt_crate_refresher(THRT_CRATE_REFRESH_DELAY)
+    odometry_ref_coro = drone.odometry_refresher(ODOMETRY_REFRESH_DELAY)
 
     group = asyncio.gather(
         position_ref_coro,
@@ -268,8 +191,6 @@ async def start_coroutines(
     coros = []
 
     # ros2 spin on separate thread
-    # TODO: this coroutine is causing thread errors
-    # because asyncio is not thread safe, so we gotta fix this
     coros.append(
         asyncio.to_thread(rclpy.spin, drone.ros2_node)
     ) 

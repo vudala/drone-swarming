@@ -1,17 +1,17 @@
-from rclpy.node import Node
-from mavsdk import System
-
-from std_msgs.msg import ByteMultiArray, ByteMultiArray
-
+# sys
+import time
 from functools import partial
-
 from typing import Callable
 
+# 3rd party
+import asyncio
+from rclpy.node import Node
+from mavsdk import System
+from std_msgs.msg import ByteMultiArray, ByteMultiArray
+
+# self
 import utils
-
 from logger import Logger
-
-import time
 
 
 MAVSDK_SERVER_DEFAULT_PORT = 50051
@@ -35,7 +35,8 @@ class DroneCore(System):
 
         self.priority = priority
 
-        self.ros2_node = Node(name)
+        self.node_name = 'drone_{}'.format(instance)
+        self.ros2_node = Node(self.node_name)
         self.instance = instance
 
         self.position = None
@@ -95,16 +96,17 @@ class DroneCore(System):
             Name of the ROS2 topic you want tocreate_publisher
         """
         node = self.ros2_node
-        return node.create_publisher(data_type, self.name + topic, 1)
+        return node.create_publisher(data_type, self.node_name + topic, 1)
 
 
     def publish_position(self):
         """
         Publish its own position at the position topic
         """
-        msg = ByteMultiArray()
-        msg.data = utils.obj_to_bytearray(self.position)
-        self.position_publisher.publish(msg)
+        if self.position != None:
+            msg = ByteMultiArray()
+            msg.data = utils.obj_to_bytearray(self.position)
+            self.position_publisher.publish(msg)
 
 
     def subscribe_to(
@@ -136,47 +138,82 @@ class DroneCore(System):
         )
         self.subscribed.add(sub)
 
-
-    async def update_position(self):
+        
+    async def position_refresher(self, delay):
         """
-        Update its own position
+        Keeps updating and publishing the drone position
+
+        Parameters
+        ----------
+        - delay: float
+            - Delay in seconds between iterations
         """
         async for pos in self.telemetry.position():
             self.position = pos
-            return pos
+            self.publish_position()
+            #self.logger.info(self.position)
+            await asyncio.sleep(delay)
 
 
-    async def update_velocity_ned(self):
+    async def velocity_refresher(self, delay):
         """
-        Update its own velocity
+        Keeps updating and publishing the drones NED velocity
+
+        Parameters
+        ----------
+        - delay: float
+            - Delay in seconds between iterations
         """
         async for v in self.telemetry.velocity_ned():
             self.velocity_ned = v
-            return v
+            await asyncio.sleep(delay)
 
 
-    async def update_gnd_speed_ms(self):
+    async def gnd_speed_refresher(self, delay):
         """
-        Get the vehicle current ground speed in ms
+        Keeps updating drones ground speed
 
-        Return
-        ------
-        - gs: float
+        Parameters
+        ----------
+        - delay: float
+            - Delay in seconds between iterations
         """
-        vel = self.velocity_ned
-        if vel == None:
-            return None
-        
-        self.ground_speed_ms = utils.ground_speed_ms(vel)
-        return self.ground_speed_ms
+        while True:
+            await asyncio.sleep(delay)
+            vel = self.velocity_ned
+            if vel == None:
+                continue
+            self.ground_speed_ms = utils.ground_speed_ms(vel)
 
 
-    async def update_fixedwing_metrics(self):
+    async def thrt_crate_refresher(self, delay):
+        """
+        Keeps updating drones throttle and climb rate
+
+        Parameters
+        ----------
+        - delay: float
+            - Delay in seconds between iterations
+        """
         async for met in self.telemetry.fixedwing_metrics():
             self.throttle_pct = met.throttle_percentage
             self.climb_rate_ms = met.climb_rate_m_s
-            return self.throttle_pct, self.climb_rate_ms
+            await asyncio.sleep(delay)
 
+
+    async def odometry_refresher(self, delay):
+        """
+        Keeps updating the odometry data of the drone
+
+        Parameters
+        ----------
+        - delay: float
+            - Delay in seconds between iterations
+        """
+        async for od in self.telemetry.odometry():
+            self.odometry = od
+            await asyncio.sleep(delay)
+    
 
     def setup_battery(self):
         self.prev_time = time.time()
@@ -186,9 +223,3 @@ class DroneCore(System):
     async def update_battery(self):
         self.battery = utils.remaining_battery(self)
         return self.battery
-    
-
-    async def update_odometry(self):
-        async for od in self.telemetry.odometry():
-            self.odometry = od
-            return od
