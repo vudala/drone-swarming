@@ -60,10 +60,6 @@ class DroneCore(System):
 
         self.odometry = None
 
-        self.prev_time = None
-        self.energy_accumulated = None
-        self.battery = None
-
 
     async def stabilize(self):
         """
@@ -215,13 +211,3 @@ class DroneCore(System):
         async for od in self.telemetry.odometry():
             self.odometry = od
             await asyncio.sleep(delay)
-    
-
-    def setup_battery(self):
-        self.prev_time = time.time()
-        self.energy_accumulated = 0
-
- 
-    async def update_battery(self):
-        self.battery = utils.remaining_battery(self)
-        return self.battery
