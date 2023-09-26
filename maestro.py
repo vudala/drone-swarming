@@ -31,6 +31,8 @@ def read_config(logger: Logger, path: str):
             logger.info('Reading drones from {}'.format(at_root_path))
             f = open(at_root_path)
             return json.load(f)
+        
+    logger.info("Please provide a configuration file")
     return []
 
 
@@ -110,7 +112,7 @@ def get_args():
         '-c', '--config', dest='conf_path',
         metavar='filepath', type=str,
         default='config.json',
-        help='path for .json config file'
+        help='path for .json config file, check README.md'
     )
 
     parser.add_argument(
