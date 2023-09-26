@@ -23,7 +23,7 @@ pip install -r requirements.txt
 to install mavsdk and asyncio
 
 ### Usage
-To summon NUMBER_OF_DRONES drones just run the following:
+Display usage:
 ```bash
-python3 maestro.py [NUMBER_OF_DRONES]
+python3 maestro.py -h
 ```
