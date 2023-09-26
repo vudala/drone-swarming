@@ -11,11 +11,11 @@ import drone
 
 def root_path():
     """
-    Gets the root path of the file
+    Gets the root path of the project
 
     Return
     ------
-    - 
+    - rpath: str
     """
     return os.path.dirname(os.path.abspath(__file__))
 
@@ -36,7 +36,24 @@ def read_config(logger: Logger, path: str):
     return []
 
 
-def main(fpath: str, airsim_g: bool):
+def process_mpath(log: Logger, name: str, m_path: str, cfg_path: str):
+    result = m_path
+    
+    if m_path == None:
+        log.info(f'No mission for {str(name)}')
+    else:
+        isabs = os.path.isabs(m_path)
+        if not isabs:
+            result = os.path.join(os.path.dirname(cfg_path), m_path)
+
+    if result != None and not os.path.exists(result):
+        log.error(f'{str(name)}: {result} does not exist')
+        quit()
+        
+    return result    
+
+
+def main(conf_path: str, airsim_g: bool):
     """
     Creates multiple drones and syncs them
 
@@ -51,7 +68,7 @@ def main(fpath: str, airsim_g: bool):
     log.info('Maestro initialized')
     log.info('Creating the drones')
 
-    drones_config = read_config(log, fpath)
+    drones_config = read_config(log, conf_path)
 
     total_drones = len(drones_config)
     barrier = Barrier(parties=total_drones)
@@ -61,10 +78,8 @@ def main(fpath: str, airsim_g: bool):
     inst = 0
     for d_name in drones_config:
         m_path = drones_config[d_name].get('mission_path', None)
+        m_path = process_mpath(log, d_name, m_path, conf_path)
 
-        if m_path == None:
-            log.info(f'No mission for Drone {str(inst)}')
-        
         p = Process(
             target=drone.execute,
             args=[
