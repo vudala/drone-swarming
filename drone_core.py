@@ -55,11 +55,16 @@ class DroneCore(System):
         self.velocity_ned = None
         self.ground_speed_ms = None
 
+        self.airspeed_ms = None
         self.throttle_pct = None
         self.climb_rate_ms = None
 
         self.odometry = None
-
+        self.roll_rads = None
+        self.pitch_rads = None
+        self.yaw_rads = None
+        self.relative_alt_m = None
+        
 
     async def stabilize(self):
         """
@@ -193,6 +198,7 @@ class DroneCore(System):
         """
         await self.telemetry.set_rate_fixedwing_metrics(20)
         async for met in self.telemetry.fixedwing_metrics():
+            self.airspeed_ms = met.airspeed_m_s
             self.throttle_pct = met.throttle_percentage
             self.climb_rate_ms = met.climb_rate_m_s
             await asyncio.sleep(delay)
@@ -210,4 +216,8 @@ class DroneCore(System):
         await self.telemetry.set_rate_odometry(20)
         async for od in self.telemetry.odometry():
             self.odometry = od
+            self.roll_rads = od.angular_velocity_body.roll_rad_s
+            self.pitch_rads = od.angular_velocity_body.pitch_rad_s
+            self.yaw_rads = od.angular_velocity_body.yaw_rad_s
+            self.relative_alt_m = od.position_body.z_m
             await asyncio.sleep(delay)
