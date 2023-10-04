@@ -1,5 +1,6 @@
 # standard
 from multiprocessing.synchronize import Barrier
+import time
 
 # 3rd party
 import asyncio
@@ -153,9 +154,7 @@ async def safechecker(drone: DroneCore, total: int):
     Paramenters
     -----------
     - drone: DroneCore
-        - The drone that will be checking
-    - total: int
-        - Total number of drones in the swarm
+        - The drone that will be checkingbattery capacity mah
     """
     while True:
         for i in range(total):
@@ -170,6 +169,62 @@ async def safechecker(drone: DroneCore, total: int):
                     await drone.mission.pause_mission()
                     await drone.action.hold()
         await asyncio.sleep(0.05)
+
+
+async def assert_init(drone: DroneCore):
+    gnd = drone.ground_speed_ms
+    fwm = drone.fixedw
+    odo = drone.odometry
+    pos = drone.position
+
+    while None in [gnd, fwm, odo, pos]:
+        await asyncio.sleep(0.1)
+        gnd = drone.ground_speed_ms
+        fwm = drone.fixedw
+        odo = drone.odometry
+        pos = drone.position
+
+
+async def battery_logger(drone: DroneCore):
+    await assert_init(drone)
+
+    battery_capacity_mah = 10000
+    average_voltage = 22.5453
+    battery_capacity_wh = (battery_capacity_mah * average_voltage) / 1000
+
+    prev_time = time.time()
+    total_energy_consumed = 0.0
+
+    while True:
+        gnd = drone.ground_speed_ms
+        air = drone.airspeed_ms
+        roll = drone.roll_rads
+        pitch = drone.pitch_rads
+        yaw = drone.yaw_rads
+        alt = drone.relative_alt_m
+        thr = drone.throttle_pct
+
+        predicted_power = (
+            571.52 + (3.8 * gnd) - (14.85 * air) + (0.012 * roll)
+            + (3.44 * pitch) - (0.058 * yaw) - (1.46 * alt) + (12.0 * thr)
+        )
+        t = time.time()
+        time_interval = t - prev_time
+        prev_time = t
+
+        total_energy_consumed += (predicted_power * time_interval) / 3600
+        remaining_energy = battery_capacity_wh - total_energy_consumed
+        remaining_percentage  = (remaining_energy / battery_capacity_wh)
+
+        msg = "pct: {} te_cons: {}".format(remaining_percentage, total_energy_consumed)
+        drone.logger.info(msg)
+
+        # msg = "gnd: {} air: {} roll: {} pitch: {} yaw: {} alt: {} thr: {}".format(
+        #     gnd, air, roll, pitch, yaw, alt, thr
+        # )
+        # drone.logger.error(msg)
+
+        await asyncio.sleep(0.1)
 
 
 async def start_coroutines(
@@ -203,7 +258,9 @@ async def start_coroutines(
     coros.append(safechecker(drone, total))
 
     if airsim_e:
-        coros.append(airsim_pos_updater(drone)) 
+        coros.append(airsim_pos_updater(drone))
+
+    coros.append(battery_logger(drone))
 
     # create tasks for all coroutines
     group = asyncio.gather(*coros)
