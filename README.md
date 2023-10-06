@@ -14,6 +14,11 @@ You will need all these libraries:
 - MAVSDK-Python
   - Install: pip install mavsdk
 
+- AirSim API
+  - Install:
+    - pip install msgpack-rpc-python
+    - pip install airsim
+
 The requirements needs better documentation
 
 Or you can run
@@ -34,16 +39,16 @@ python3 maestro.py -h
 The JSON file must be organized in the following way:
 ```json
 {
-  "name_of_drone_1": {
-    "mission_path" : null
-  },
-  "name_of_drone_2": {
-    "mission_path" : "another/mission.plan"
-  },
-  "name_of_drone_3": {
-    "mission_path" : "path/to/file.plan"
-  },
-  "name_of_drone_4": {}
+    "name_of_drone_1": {
+        "mission_path" : null
+    },
+    "name_of_drone_2": {
+        "mission_path" : "another/mission.plan"
+    },
+    "name_of_drone_3": {
+        "mission_path" : "path/to/file.plan"
+    },
+    "name_of_drone_4": {}
 }
 ```
 Using this file 4 drones would be spawned. Drone named ”name_of_drone3”
@@ -73,3 +78,57 @@ file, and no other configuration file was issued to the script using -c or
 #### Absolute path
 If none of the situations above happen, maestro.py will look for config.json
 file in the folder of the script itself.
+
+
+### AirSim with external physics engine
+You can use this script to update the position of an AirSim drone based on info
+available by PX4 SITL, without using the physics engine of AirSim.
+
+To do it, there are some details that must be highlighted.
+#### Name of the drones
+The names defined for the drones in AirSim configuration file, must be the same
+for the drones in the configuration file of this script.
+
+For instance, maestro would use a configuration file like this:
+```json
+{
+    "CoolDrone1": {
+        "mission_path" : null
+    },
+    "CoolDrone2": {
+        "mission_path" : "another/mission.plan"
+    }
+}
+```
+
+And AirSim would use a settings file like this (remember to set the
+"PhysicsEngineName" accordingly):
+```json
+{
+    "SettingsVersion": 1.2,
+    "SimMode": "Multirotor",
+    "ClockType": "SteppableClock",
+    "PhysicsEngineName":"ExternalPhysicsEngine",
+    "Vehicles": {
+        "CoolDrone1": {
+            "VehicleType": "PX4Multirotor",
+            "LockStep": true,
+            "X": 0, "Y": 0, "Z": 0
+        },
+        "CoolDrone2": {
+            "VehicleType": "PX4Multirotor",
+            "LockStep": true,
+            "X": 0, "Y": 4, "Z": 0
+        }
+    }
+}
+```
+
+#### -a, --airsim-external
+After you have done the configuration appropriately, you must run AirSim and
+some other physics simulator for PX4 SITL to bind to.
+
+Along with this script with this flag set:
+```bash
+python3 maestro.py -a
+```

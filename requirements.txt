@@ -1,2 +1,4 @@
-asyncio==3.4.3
-mavsdk==1.4.8
+asyncio
+mavsdk
+msgpack-rpc-python
+airsim
