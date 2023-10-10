@@ -51,6 +51,7 @@ class DroneCore(System):
             '/position',
             ByteMultiArray
         )
+        self.relative_alt_m = None
 
         self.velocity_ned = None
         self.ground_speed_ms = None
@@ -64,7 +65,6 @@ class DroneCore(System):
         self.roll_rads = None
         self.pitch_rads = None
         self.yaw_rads = None
-        self.relative_alt_m = None
         
 
     async def stabilize(self):
