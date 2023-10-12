@@ -1,4 +1,0 @@
-asyncio
-mavsdk
-msgpack-rpc-python
-airsim

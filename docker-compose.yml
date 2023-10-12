@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  maestro:
+    build: .
+    image: maestro:1
+    container_name: maestro
+    hostname: maestro
+    network_mode: host
+    volumes:
+      - ./config.json:/root/src/config.json
+      - ./log:/root/src/log

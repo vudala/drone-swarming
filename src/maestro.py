@@ -31,9 +31,7 @@ def read_config(logger: Logger, path: str):
             logger.info('Reading drones from {}'.format(at_root_path))
             f = open(at_root_path)
             return json.load(f)
-        
-    logger.info("Please provide a configuration file")
-    return []
+    return None
 
 
 def process_mpath(log: Logger, name: str, m_path: str, cfg_path: str):
@@ -69,6 +67,10 @@ def main(conf_path: str, airsim_g: bool):
     log.info('Creating the drones')
 
     drones_config = read_config(log, conf_path)
+
+    if drones_config == None:
+        log.error("Please provide a configuration file")
+        quit()
 
     total_drones = len(drones_config)
     barrier = Barrier(parties=total_drones)

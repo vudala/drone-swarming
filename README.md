@@ -4,7 +4,7 @@ Implementing a drone swarm controller on PX4 SITL
 ### Requirements
 You will need all these libraries:
 
-- Python client for ROS2:
+- Python client for ROS 2 Humble:
   - Follow the standard process of instalation and setup for ROS2
   https://docs.ros.org/
 
@@ -19,15 +19,28 @@ You will need all these libraries:
     - pip install msgpack-rpc-python
     - pip install airsim
 
-The requirements needs better documentation
-
-Or you can run
-```bash
-pip install -r requirements.txt
-```
-to install mavsdk and asyncio
-
 ### Usage
+
+#### Running on Docker
+You can use this application inside a Docker container. To do it, we gotta build
+the image for the container:
+```bash
+docker compose build
+```
+And then create configuration file for the script to use. Just create a
+config.json file in the root folder of this project.
+You can check what to write in this file below.
+
+After everything is setup, run the container:
+```bash
+docker compose up
+```
+
+#### Running without Docker
+
+You can also directly run it from source, go to the src folder and you will 
+can use the main script directly.
+
 Display usage:
 ```bash
 python3 maestro.py -h
