@@ -65,6 +65,8 @@ class DroneCore(System):
         self.roll_rads = None
         self.pitch_rads = None
         self.yaw_rads = None
+
+        self.battery_pct = None
         
 
     async def stabilize(self):
@@ -223,3 +225,61 @@ class DroneCore(System):
             self.pitch_rads = od.angular_velocity_body.pitch_rad_s
             self.yaw_rads = od.angular_velocity_body.yaw_rad_s
             await asyncio.sleep(delay)
+
+
+    async def battery_refresher(self, delay):
+        """
+        Keeps updating the battery percentage of the drone
+
+        Parameters
+        ----------
+        - delay: float
+            - Delay in seconds between iterations
+        """
+
+        async def assert_init():  
+            gnd = self.ground_speed_ms
+            fwm = self.fixedw
+            odo = self.odometry
+            pos = self.position
+
+            while None in [gnd, fwm, odo, pos]:
+                await asyncio.sleep(0.1)
+                gnd = self.ground_speed_ms
+                fwm = self.fixedw
+                odo = self.odometry
+                pos = self.position
+
+        await assert_init(self)
+
+        battery_capacity_mah = 10000
+        average_voltage = 22.5453
+        battery_capacity_wh = (battery_capacity_mah * average_voltage) / 1000
+
+        prev_time = time.time()
+        total_energy_consumed = 0.0
+
+        while True:
+            gnd = self.ground_speed_ms
+            air = self.airspeed_ms
+            roll = self.roll_rads
+            pitch = self.pitch_rads
+            yaw = self.yaw_rads
+            alt = self.relative_alt_m
+            thr = self.throttle_pct
+
+            predicted_power = (
+                571.52 + (3.8 * gnd) - (14.85 * air) + (0.012 * roll)
+                + (3.44 * pitch) - (0.058 * yaw) - (1.46 * alt) + (12.0 * thr)
+            )
+            t = time.time()
+            time_interval = t - prev_time
+            prev_time = t
+
+            total_energy_consumed += (predicted_power * time_interval) / 3600
+            remaining_energy = battery_capacity_wh - total_energy_consumed
+            remaining_percentage  = (remaining_energy / battery_capacity_wh)
+            
+            self.battery_pct = remaining_percentage
+
+            await asyncio.sleep(0.1)

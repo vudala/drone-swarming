@@ -22,6 +22,7 @@ VELOCITY_REFRESH_DELAY = 0.1
 GND_SPEED_REFRESH_DELAY = 0.1
 THRT_CRATE_REFRESH_DELAY = 0.1
 ODOMETRY_REFRESH_DELAY = 0.1
+BATTERY_REFRESH_DELAY = 0.1
 
 DISTANCE_THRESHOLD_CM = 200
 
@@ -135,6 +136,7 @@ async def refresher(drone: DroneCore):
     gnd_speed_ref_coro = drone.gnd_speed_refresher(GND_SPEED_REFRESH_DELAY)
     fixedw_ref_coro = drone.thrt_crate_refresher(THRT_CRATE_REFRESH_DELAY)
     odometry_ref_coro = drone.odometry_refresher(ODOMETRY_REFRESH_DELAY)
+    battery_ref_coro = drone.battery_refresher(BATTERY_REFRESH_DELAY)
 
     group = asyncio.gather(
         position_ref_coro,
@@ -142,6 +144,7 @@ async def refresher(drone: DroneCore):
         gnd_speed_ref_coro,
         fixedw_ref_coro,
         odometry_ref_coro,
+        battery_ref_coro
     )
 
     await group
@@ -171,85 +174,14 @@ async def safechecker(drone: DroneCore, total: int):
         await asyncio.sleep(0.05)
 
 
-async def assert_init(drone: DroneCore):
-    """
-    Asserts that all of the sensor data has been fetched
-    - drone: DroneCore
-        - Target drone
-    """
-    gnd = drone.ground_speed_ms
-    fwm = drone.fixedw
-    odo = drone.odometry
-    pos = drone.position
-
-    while None in [gnd, fwm, odo, pos]:
-        await asyncio.sleep(0.1)
-        gnd = drone.ground_speed_ms
-        fwm = drone.fixedw
-        odo = drone.odometry
-        pos = drone.position
-
-
 async def battery_logger(drone: DroneCore):
-    await assert_init(drone)
 
-    battery_capacity_mah = 10000
-    average_voltage = 22.5453
-    battery_capacity_wh = (battery_capacity_mah * average_voltage) / 1000
-
-    prev_time = time.time()
-    total_energy_consumed = 0.0
+    while drone.battery_pct == None:
+        await asyncio.sleep(0.1)
 
     while True:
-        gnd = drone.ground_speed_ms
-        air = drone.airspeed_ms
-        roll = drone.roll_rads
-        pitch = drone.pitch_rads
-        yaw = drone.yaw_rads
-        alt = drone.relative_alt_m
-        thr = drone.throttle_pct
-
-        predicted_power = (
-            571.52 + (3.8 * gnd) - (14.85 * air) + (0.012 * roll)
-            + (3.44 * pitch) - (0.058 * yaw) - (1.46 * alt) + (12.0 * thr)
-        )
-        t = time.time()
-        time_interval = t - prev_time
-        prev_time = t
-
-        total_energy_consumed += (predicted_power * time_interval) / 3600
-        remaining_energy = battery_capacity_wh - total_energy_consumed
-        remaining_percentage  = (remaining_energy / battery_capacity_wh)
-
-        msg = "pct: {} te_cons: {}".format(
-            remaining_percentage,
-            total_energy_consumed
-        )
-        drone.logger.info(msg)
-
-        # msg = "gnd: {} air: {} roll: {} pitch: {} yaw: {} alt: {} thr: {}".format(
-        #     gnd, air, roll, pitch, yaw, alt, thr
-        # )
-        # drone.logger.error(msg)
-
+        drone.logger.info(f'battery_pct: {str(drone.battery_pct)}')
         await asyncio.sleep(0.1)
-
-
-# async def battery_logger(drone: DroneCore):
-#     async for bat in drone.telemetry.battery():
-#         bt = time.time()
-#         rp = bat.remaining_percent
-#         gnd = drone.ground_speed_ms
-#         air = drone.airspeed_ms
-#         alt = drone.position.absolute_altitude_m
-#         yaw = drone.yaw_rads
-#         pitch = drone.pitch_rads
-#         roll = drone.pitch_rads
-
-#         msg = "{}, {}, {}, {}, {}, {}, {}, {}".format(
-#             bt, rp, gnd, air, alt ,yaw, pitch, roll
-#         )
-#         drone.logger.info(msg)
 
 
 async def start_coroutines(

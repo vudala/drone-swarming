@@ -1,7 +1,7 @@
 # Maestro
 Implementing a drone swarm controller on PX4 SITL
 
-### Requirements
+### Requirements (ignore if you are going to use Docker)
 You will need all these libraries:
 
 - Python client for ROS 2 Humble:
@@ -22,7 +22,8 @@ You will need all these libraries:
 ### Usage
 
 #### Running on Docker
-You can use this application inside a Docker container. To do it, we gotta build
+You can use this application inside a Docker container. To do it,
+install docker (https://docs.docker.com/engine/install/ubuntu) and build
 the image for the container:
 ```bash
 docker compose build
