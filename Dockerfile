@@ -40,4 +40,4 @@ COPY src src
 COPY entrypoint.sh entrypoint.sh
 RUN chmod +x entrypoint.sh
 
-ENTRYPOINT [ "bash", "-c", "./entrypoint.sh" ]
+ENTRYPOINT ["/bin/sh", "-c" , "./entrypoint.sh"]

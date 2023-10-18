@@ -10,3 +10,4 @@ services:
     volumes:
       - ./config.json:/root/src/config.json
       - ./log:/root/src/log
+      - ./missions:/root/src/missions
