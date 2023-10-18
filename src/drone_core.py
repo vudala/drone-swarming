@@ -250,7 +250,7 @@ class DroneCore(System):
                 odo = self.odometry
                 pos = self.position
 
-        await assert_init(self)
+        await assert_init()
 
         battery_capacity_mah = 10000
         average_voltage = 22.5453

@@ -7,6 +7,7 @@ import asyncio
 import rclpy
 import airsim
 from std_msgs.msg import ByteMultiArray
+from mavsdk.offboard import (PositionNedYaw)
 
 # self
 import utils
@@ -174,6 +175,42 @@ async def safechecker(drone: DroneCore, total: int):
         await asyncio.sleep(0.05)
 
 
+async def proceed():
+    """
+    Await for some logic allowing the drone to proceed with its flight
+    """
+    while True:
+        await asyncio.sleep(1)
+
+
+async def battery_checker(drone: DroneCore):
+    while True:
+        if drone.battery_pct != None and drone.battery_pct <= 0.97:
+            await drone.mission.pause_mission()
+
+            pos = drone.odometry.position_body
+            n = 0.0
+            e = 0.0
+            d = 0.0
+            await drone.offboard.set_position_ned(
+                PositionNedYaw(n, e, d, 0.0)
+            )
+
+            await drone.offboard.start()
+
+            await drone.offboard.set_position_ned(
+                PositionNedYaw(n, e, -pos.z_m + 10, 0.0)
+            )
+
+            await asyncio.sleep(15)
+
+            await drone.offboard.stop()
+
+            await proceed()
+
+        await asyncio.sleep(0.1)
+            
+
 async def battery_logger(drone: DroneCore):
 
     while drone.battery_pct == None:
@@ -213,6 +250,8 @@ async def start_coroutines(
         coros.append(mission.run_mission(drone, mission_path)) 
 
     coros.append(safechecker(drone, total))
+
+    coros.append(battery_checker(drone))
 
     if airsim_e:
         coros.append(airsim_pos_updater(drone))

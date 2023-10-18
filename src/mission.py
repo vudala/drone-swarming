@@ -78,3 +78,12 @@ async def run_mission(drone: DroneCore, mission_path: str = None):
 
     drone.logger.info("-- Starting mission")
     await drone.mission.start_mission()
+
+
+def fetch_waypoint(drone: DroneCore):
+    while True:
+        pos = drone.position
+        lat = pos.latitude_deg
+        lon = pos.longitude_deg
+        alt = 5.0
+        yield lat, lon, alt
