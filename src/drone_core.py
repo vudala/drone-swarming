@@ -96,7 +96,9 @@ class DroneCore(System):
         Parameters
         ----------
         - topic: str
-            Name of the ROS2 topic you want tocreate_publisher
+            - Name of the ROS2 topic you want tocreate_publisher
+        - data_type: any
+            - Data type of the topic
         """
         node = self.ros2_node
         return node.create_publisher(data_type, self.node_name + topic, 1)
@@ -282,4 +284,4 @@ class DroneCore(System):
             
             self.battery_pct = remaining_percentage
 
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(delay)

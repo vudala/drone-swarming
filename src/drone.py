@@ -26,6 +26,7 @@ ODOMETRY_REFRESH_DELAY = 0.1
 BATTERY_REFRESH_DELAY = 0.1
 
 DISTANCE_THRESHOLD_CM = 200
+CRITICAL_BATTERY = 0.97
 
 drones = []
 
@@ -167,8 +168,7 @@ async def safechecker(drone: DroneCore, total: int):
             if i != drone.instance and 'position' in drones[i]:
                 dist = utils.distance_cm(drone.position, drones[i]['position'])
                 if dist <= float(DISTANCE_THRESHOLD_CM):
-                    # do something
-                    # stall and wait for the path to be clear
+                    # stall and wait
                     drone.logger.warning('DRONE TOO CLOSE')
                     await drone.mission.pause_mission()
                     await drone.action.hold()
@@ -184,25 +184,31 @@ async def proceed():
 
 
 async def battery_checker(drone: DroneCore):
+    """
+    Keeps checking the battery, and if it goes below a value it triggers 
+    a contigency action
+    
+    Parameters
+    ----------
+    - drone: DroneCore
+        - Target drone
+    """
     while True:
-        if drone.battery_pct != None and drone.battery_pct <= 0.97:
+        if drone.battery_pct != None and drone.battery_pct <= CRITICAL_BATTERY:
             await drone.mission.pause_mission()
 
-            pos = drone.odometry.position_body
-            n = 0.0
-            e = 0.0
-            d = 0.0
             await drone.offboard.set_position_ned(
-                PositionNedYaw(n, e, d, 0.0)
+                PositionNedYaw(0.0, 0.0, 0.0, 0.0)
             )
 
             await drone.offboard.start()
 
+            pos = drone.odometry.position_body
             await drone.offboard.set_position_ned(
-                PositionNedYaw(n, e, -pos.z_m + 10, 0.0)
+                PositionNedYaw(0.0, 0.0, -pos.z_m + 10, 0.0)
             )
 
-            await asyncio.sleep(15)
+            await asyncio.sleep(20)
 
             await drone.offboard.stop()
 
