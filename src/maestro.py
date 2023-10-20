@@ -21,6 +21,16 @@ def root_path():
 
 
 def read_config(logger: Logger, path: str):
+    """
+    Parses the configuration file
+
+    Parameters
+    ----------
+    - logger: Logger
+        - Which logger to use
+    - path: str
+        - Path to config file
+    """
     if os.path.exists(path):
         logger.info('Reading drones from {}'.format(path))
         f = open(path)
@@ -35,6 +45,21 @@ def read_config(logger: Logger, path: str):
 
 
 def process_mpath(log: Logger, name: str, m_path: str, cfg_path: str):
+    """
+    Normalizes the mission path, converting relative paths to their absolute
+    values
+
+    Parameters
+    ----------
+    - log: Logger
+        - Which logger to use
+    - name: str
+        - Name of the drone
+    - m_path: str
+        - Path of the mission
+    - cfg_path: str
+        - Path for configuration file
+    """
     result = m_path
     
     if m_path == None:

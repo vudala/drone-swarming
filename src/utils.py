@@ -7,18 +7,6 @@ import time
 from mavsdk.telemetry import Position, VelocityNed
 
 
-# Assumptions and parameters initialization for battery
-P_PIXHAWK = 2.2  # Power consumption of the Pixhawk in watts
-C_BATTERY = 22.0   # Battery capacity in Ah
-V_BATTETY_FULL = 25.2  # Fully charged voltage of a 6S LiPo battery in volts
-E_BATTERY = C_BATTERY * V_BATTETY_FULL  # Total energy of the battery in Wh
-
-# Coefficients Initialization fro battery
-K_T = 1.5  # Throttle coefficient in W/%
-K_GS = 3.33  # Ground speed coefficient in W/(m/s)
-K_CR = 15.0  # Climb rate coefficient in W/(m/s)
-
-
 def obj_to_bytearray(obj: object):
     """
     Turns an Object into a byte list to be used as ByteMultiArray by ROS2

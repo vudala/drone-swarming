@@ -8,6 +8,7 @@ from drone_core import DroneCore
 
 
 # this need to be reformulated, it has problems with it
+# currently useless
 async def assert_action(action):
     """
     The main objective of this function is to assure that
@@ -28,7 +29,7 @@ async def assert_action(action):
             print(err)
         await asyncio.sleep(0.1)
 
-
+# currently useless
 async def perform_calibration(drone: DroneCore):
     try :
         drone.logger.info("-- Starting gyroscope calibration")
@@ -38,7 +39,6 @@ async def perform_calibration(drone: DroneCore):
 
     except CalibrationError as err:
         drone.logger.warning(err)
-
 
 async def perform_health_checks(drone: DroneCore):
     drone.logger.info("Waiting for drone to have a global position estimate...")
