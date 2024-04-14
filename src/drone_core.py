@@ -7,6 +7,7 @@ from typing import Callable
 import asyncio
 from rclpy.node import Node
 from mavsdk import System
+from mavsdk.telemetry import LandedState
 from std_msgs.msg import ByteMultiArray, ByteMultiArray
 
 # self
@@ -65,6 +66,8 @@ class DroneCore(System):
         self.roll_rads = None
         self.pitch_rads = None
         self.yaw_rads = None
+
+        self.state = None
 
         self.battery_pct = None
         
@@ -229,6 +232,30 @@ class DroneCore(System):
             await asyncio.sleep(delay)
 
 
+    async def state_refresher(self, delay):
+        """
+        Keeps updating the state of the drone
+
+        Parameters
+        ----------
+        - delay: float
+            - Delay in seconds between iterations
+        """
+        async for state in self.telemetry.landed_state():
+            self.state = state
+            await asyncio.sleep(delay)
+
+
+    def is_landed(self):
+        """
+        Checks if the drone is landed
+        """
+        if self.state == None or self.state == LandedState.UNKNOWN:
+            return True
+        
+        return self.state == LandedState.ON_GROUND
+
+
     async def battery_refresher(self, delay):
         """
         Keeps updating the battery percentage of the drone
@@ -262,6 +289,12 @@ class DroneCore(System):
         total_energy_consumed = 0.0
 
         while True:
+            # Wont consume battery if landed
+            while self.is_landed():
+                prev_time = time.time()
+                total_energy_consumed = 0.0
+                await asyncio.sleep(0.1)
+
             gnd = self.ground_speed_ms
             air = self.airspeed_ms
             roll = self.roll_rads

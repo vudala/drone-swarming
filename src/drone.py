@@ -24,6 +24,7 @@ GND_SPEED_REFRESH_DELAY = 0.1
 THRT_CRATE_REFRESH_DELAY = 0.1
 ODOMETRY_REFRESH_DELAY = 0.1
 BATTERY_REFRESH_DELAY = 0.1
+STATE_REFRESH_DELAY = 0.1
 
 DISTANCE_THRESHOLD_CM = 200
 CRITICAL_BATTERY = 0.97
@@ -139,6 +140,7 @@ async def refresher(drone: DroneCore):
     fixedw_ref_coro = drone.thrt_crate_refresher(THRT_CRATE_REFRESH_DELAY)
     odometry_ref_coro = drone.odometry_refresher(ODOMETRY_REFRESH_DELAY)
     battery_ref_coro = drone.battery_refresher(BATTERY_REFRESH_DELAY)
+    state_ref_coro = drone.state_refresher(BATTERY_REFRESH_DELAY)
 
     group = asyncio.gather(
         position_ref_coro,
@@ -146,7 +148,8 @@ async def refresher(drone: DroneCore):
         gnd_speed_ref_coro,
         fixedw_ref_coro,
         odometry_ref_coro,
-        battery_ref_coro
+        battery_ref_coro,
+        state_ref_coro
     )
 
     await group
@@ -223,7 +226,8 @@ async def battery_logger(drone: DroneCore):
         await asyncio.sleep(0.1)
 
     while True:
-        drone.logger.info(f'battery_pct: {str(drone.battery_pct)}')
+        if not drone.is_landed():
+            drone.logger.info(f'battery_pct: {str(drone.battery_pct)}')
         await asyncio.sleep(0.1)
 
 

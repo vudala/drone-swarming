@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   maestro:
     build: .
@@ -11,3 +9,4 @@ services:
       - ./config.json:/root/src/config.json
       - ./log:/root/src/log
       - ./missions:/root/src/missions
+      - /etc/localtime:/etc/localtime:ro
